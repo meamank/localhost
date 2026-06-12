@@ -1,5 +1,7 @@
 export interface ModelMeta {
   id: string;
+  org: string;
+  logo_url: string;
   name: string;
   description?: string;
   ramRequiredGB?: number;
@@ -28,11 +30,16 @@ export interface LocalModel extends ModelMeta {
 }
 
 export type Message = {
-  id: number;
+  id: string;
   role: "user" | "assistant" | "system";
   content: string;
   timestamp: number;
   tokenCount?: number;
   tokensPerSecond?: number;
   isStreaming?: boolean;
+  input_per_second?: number;
+  tokens_evaluated?: number;
+  prompt_ms?: number;
+  tokens_predicted?: number;
+  predicted_ms?: number;
 };

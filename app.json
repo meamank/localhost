@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "nirvah",
-    "slug": "nirvah",
+    "name": "LocalHost",
+    "slug": "localhost",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/images/icon.png",
-    "scheme": "nirvah",
+    "scheme": "localhost",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true
@@ -43,7 +43,18 @@
           "forceCxx20": true,
           "enableOpenCLAndHexagon": true
         }
-      ]
+      ],
+      [
+        "react-native-nano-icons",
+        {
+          "iconSets": [
+            {
+              "inputDir": "./src/assets/icons"
+            }
+          ]
+        }
+      ],
+      "react-native-enriched-markdown"
     ],
     "experiments": {
       "typedRoutes": true

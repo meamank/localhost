@@ -1,2 +1,54 @@
 @import "tailwindcss";
 @import "uniwind";
+
+@layer theme {
+  :root {
+    @variant light {
+      /* Backgrounds */
+      --color-background-primary: #ffffff;
+      --color-background-secondary: #e8e8e8;
+      --color-background-tertiary: #f3f3f3;
+      --color-card: #ffffff;
+
+      /* Text/Icon colors */
+      --color-foreground-primary: #0d0d00;
+      --color-foreground-secondary: #5d5d5d;
+      --color-foreground-tertiary: #8f8f8f;
+      --color-muted: #8f8f8f;
+
+      /* Borders */
+      --color-border: #e5e7eb;
+      --color-border-subtle: #f3f4f6;
+
+      /* Interactive elements */
+      --color-primary: #0285ff;
+      --color-danger: #e02e2a;
+      --color-success: #008635;
+      --color-warning: #e25507;
+    }
+
+    @variant dark {
+      /* Backgrounds */
+      --color-background-primary: #212121;
+      --color-background-secondary: #303030;
+      --color-background-tertiary: #414141;
+      --color-card: #1f2937;
+
+      /* Text/Icon colors */
+      --color-foreground-primary: #ffffff;
+      --color-foreground-secondary: #cdcdcd;
+      --color-foreground-tertiary: #afafaf;
+      --color-muted: #afafaf;
+
+      /* Borders */
+      --color-border: #374151;
+      --color-border-subtle: #1f2937;
+
+      /* Interactive elements */
+      --color-primary: #0285ff;
+      --color-danger: #ff8583;
+      --color-success: #40c977;
+      --color-warning: #ff9e6c;
+    }
+  }
+}

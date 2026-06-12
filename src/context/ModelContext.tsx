@@ -1,6 +1,6 @@
 import * as Device from "expo-device";
 import { File, Paths } from "expo-file-system";
-import { LlamaContext } from "llama.rn";
+import { initLlama, LlamaContext } from "llama.rn";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { modelStore } from "../store/modelStore";
 import { LocalModel, ModelStatus } from "../types";
@@ -56,7 +56,11 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
     setLocalModels((prev) =>
       prev.map((model) =>
         model.id === id
-          ? { ...model, status, downloadProgress: progress }
+          ? {
+              ...model,
+              status,
+              ...(progress !== undefined && { downloadProgress: progress }),
+            }
           : model,
       ),
     );
@@ -65,19 +69,22 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
   // Add Local Model
 
   const addLocalModel = async (model: LocalModel) => {
-    const updated = [...localModels, model];
-    setLocalModels(updated);
-
-    await modelStore.saveDownloadedModels(updated);
+    setLocalModels((prev) => {
+      const updated = [...prev, model];
+      modelStore.saveDownloadedModels(updated);
+      return updated;
+    });
   };
 
   // Release Model to free RAM
 
   const releaseModel = async () => {
+    console.log("Model released: ", activeModelId);
     if (llamaContextRef.current) {
       await llamaContextRef.current.release();
       llamaContextRef.current = null;
     }
+    console.log("in release model: Context Status", llamaContextRef.current);
     setActiveModelId(null);
   };
 
@@ -97,31 +104,50 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    const updated = localModels.filter((model) => model.id !== id);
-    setLocalModels(updated);
-    await modelStore.saveDownloadedModels(updated);
-  };
-
-  // set active Model used for chat
-
-  const setActiveModel = async (id: string) => {
-    setActiveModelId(id);
-    await modelStore.saveLastModelId(id);
-
-    //Todo
+    setLocalModels((prev) => {
+      const updated = prev.filter((model) => model.id !== id);
+      modelStore.saveDownloadedModels(updated);
+      return updated;
+    });
   };
 
   useEffect(() => {
     const initializeStorage = async () => {
       try {
-        const savedModels = await modelStore.getDownloadedModels();
-        setLocalModels(savedModels);
-
+        setIsInitializing(true);
+        let savedModels = await modelStore.getDownloadedModels();
         const lastActiveModel = await modelStore.getLastModelId();
 
         if (lastActiveModel) {
-          setActiveModelId(lastActiveModel);
+          const modelToInit = savedModels.find((m) => m.id === lastActiveModel);
+          if (modelToInit && modelToInit.filePath) {
+            try {
+              const ctx = await initLlama({
+                model: modelToInit.filePath,
+                n_gpu_layers: modelToInit.nGpuLayers,
+                n_ctx: modelToInit.nCtx,
+              });
+              llamaContextRef.current = ctx;
+
+              // Set status to ready
+              savedModels = savedModels.map((m) =>
+                m.id === lastActiveModel ? { ...m, status: "ready" } : m,
+              );
+              setActiveModelId(lastActiveModel);
+            } catch (err) {
+              console.error("Failed to auto-init model on boot:", err);
+              // Fallback to downloaded state
+              savedModels = savedModels.map((m) =>
+                m.id === lastActiveModel ? { ...m, status: "downloaded" } : m,
+              );
+              setActiveModelId(null);
+            }
+          } else {
+            setActiveModelId(null);
+          }
         }
+
+        setLocalModels(savedModels);
 
         //Get RAM details
 
@@ -137,6 +163,8 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
         });
       } catch (error) {
         console.error("Failed to initialize");
+      } finally {
+        setIsInitializing(false);
       }
     };
     initializeStorage();

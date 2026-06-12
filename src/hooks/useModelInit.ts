@@ -13,6 +13,7 @@ export function useModelInit() {
   } = useModel();
 
   async function initModel(model: LocalModel) {
+    console.log("Initializing");
     setIsInitializing(true);
     await releaseModel();
     updateModelStatus(model.id, "initializing");
@@ -36,5 +37,5 @@ export function useModelInit() {
     }
   }
 
-  return initModel;
+  return { initModel };
 }
