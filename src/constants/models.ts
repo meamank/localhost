@@ -17,6 +17,21 @@ export const AVAILABLE_MODELS: ModelMeta[] = [
     nCtx: 2048,
   },
   {
+    id: "unsloth/Qwen3.5-0.8B-GGUF",
+    org: "unsloth",
+    logo_url:
+      "https://cdn-avatars.huggingface.co/v1/production/uploads/62ecdc18b72a69615d6bd857/E4lkPz1TZNLzIFr_dR273.png",
+    name: "Qwen 3.5 0.8B ",
+    description: "Qwen 3.5 0.8B Q3_K_M",
+    size: 0.47,
+    ramRequiredGB: 3,
+    downloadUrl:
+      "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/main/Qwen3.5-0.8B-Q3_K_M.gguf",
+    fileName: "qwen3.5-0.8B-GGUF",
+    nGpuLayers: 99,
+    nCtx: 2048,
+  },
+  {
     id: "bartowski/gemma3-1b-q6k",
     org: "Bartowski",
     logo_url:
