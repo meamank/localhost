@@ -11,10 +11,11 @@ import {
 import { Icon } from "../Icon";
 interface ModelCardProps {
   model: ModelMeta;
+  dynamicSize?: number;
   modelStatus: ModelStatus;
-  isActive: boolean;
+  isActive?: boolean;
   progress: number;
-  error: string | null;
+  error?: string | null;
   onDownload: () => void;
   onInit: () => void;
   onCancel: () => void;
@@ -25,6 +26,7 @@ interface ModelCardProps {
 
 export default function ModelCard({
   model,
+  dynamicSize,
   modelStatus,
   isActive,
   progress,
@@ -82,14 +84,26 @@ export default function ModelCard({
       </Text>
 
       {/* Specs */}
-      {/* <View className="flex-row justify-between">
-        <Text className="text-sm text-foreground-tertiary">
-          RAM Required: {model.ramRequiredGB} GB
-        </Text>
-        <Text className="text-sm text-foreground-tertiary">
-          Model Size: {model.size} GB
-        </Text>
-      </View> */}
+      <View className="flex-row justify-between mt-1">
+        {dynamicSize && (
+          <Text className="text-sm text-foreground-tertiary">
+            RAM Required: ~
+            {((dynamicSize / (1024 * 1024 * 1024)) * 1.5).toFixed(1)} GB
+          </Text>
+        )}
+        <View className="flex-row items-center gap-2">
+          <Text className="text-sm text-foreground-tertiary">
+            Download Size:
+          </Text>
+          {dynamicSize ? (
+            <Text className="text-sm text-foreground-tertiary font-medium">
+              {(dynamicSize / (1024 * 1024 * 1024)).toFixed(2)} GB
+            </Text>
+          ) : (
+            <ActivityIndicator size="small" color="#8f8f8f" />
+          )}
+        </View>
+      </View>
 
       {/* Progress bar */}
       {(modelStatus === "downloading" || modelStatus === "paused") && (

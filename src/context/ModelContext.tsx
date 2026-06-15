@@ -1,4 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { ExpoResourceFetcher } from "react-native-executorch-expo-resource-fetcher";
+import { AVAILABLE_MODELS } from "../constants/models";
 import { modelStore } from "../store/modelStore";
 import { LocalModel, ModelStatus } from "../types";
 
@@ -7,9 +9,10 @@ interface ModelContextType {
   activeModelId: string | null;
   isInitializing: boolean;
   setIsInitializing: (isInit: boolean) => void;
-
   isModelReady: boolean;
   setIsModelReady: (isReady: boolean) => void;
+
+  modelSizes: Record<string, number>;
 
   addLocalModel: (model: LocalModel) => Promise<void>;
   updateModelStatus: (
@@ -36,6 +39,7 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
   const [activeModelId, setActiveModelId] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
   const [isModelReady, setIsModelReady] = useState(false);
+  const [modelSizes, setModelSizes] = useState<Record<string, number>>({});
 
   // Update Model Status
 
@@ -114,6 +118,48 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
             await modelStore.clearLastModelId();
           }
         }
+
+        // --- fetch Size info from URLS ---
+        const cachedSizes = await modelStore.getModelSizes();
+        setModelSizes(cachedSizes);
+
+        (async () => {
+          const missingModels = AVAILABLE_MODELS.filter(
+            (m) => !cachedSizes[m.id],
+          );
+          if (missingModels.length > 0) {
+            const BATCH_SIZE = 3;
+            let currentSizes = { ...cachedSizes };
+
+            for (let i = 0; i < missingModels.length; i += BATCH_SIZE) {
+              const batch = missingModels.slice(i, i + BATCH_SIZE);
+
+              await Promise.all(
+                batch.map(async (model) => {
+                  try {
+                    const sources = [model.downloadUrl, model.tokenizerUrl];
+                    if (model.tokenizerConfigUrl) {
+                      sources.push(model.tokenizerConfigUrl);
+                    }
+                    const size = await ExpoResourceFetcher.getFilesTotalSize(
+                      ...sources,
+                    );
+                    currentSizes[model.id] = size;
+                  } catch (e) {
+                    console.warn(
+                      `[ModelContext] Failed to fetch size for ${model.id}`,
+                      e,
+                    );
+                  }
+                }),
+              );
+
+              // update state and AsyncStorage per batch
+              setModelSizes({ ...currentSizes });
+              await modelStore.saveModelSizes(currentSizes);
+            }
+          }
+        })();
       } catch (error) {
         console.error("Failed to load models from storage on boot", error);
       } finally {
@@ -133,6 +179,7 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
         setIsInitializing,
         isModelReady,
         setIsModelReady,
+        modelSizes,
         addLocalModel,
         updateModelStatus,
         setActiveModelId,

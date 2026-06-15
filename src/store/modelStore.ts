@@ -28,7 +28,18 @@ export const modelStore = {
   },
 
   async getDownloadedModels(): Promise<LocalModel[]> {
-    const models = await AsyncStorage.getItem(DOWNLOADED_MODELS_KEY);
-    return models != null ? JSON.parse(models) : [];
+    const data = await AsyncStorage.getItem(DOWNLOADED_MODELS_KEY);
+    if (!data) return [];
+    return JSON.parse(data);
+  },
+
+  async saveModelSizes(sizes: Record<string, number>): Promise<void> {
+    return AsyncStorage.setItem("model_sizes_cache", JSON.stringify(sizes));
+  },
+
+  async getModelSizes(): Promise<Record<string, number>> {
+    const data = await AsyncStorage.getItem("model_sizes_cache");
+    if (!data) return {};
+    return JSON.parse(data);
   },
 };

@@ -11,7 +11,7 @@ import { Stack } from "expo-router";
 import { FlatList, Pressable, View } from "react-native";
 
 export default function Models() {
-  const { localModels, activeModelId, isModelReady } = useModel();
+  const { localModels, activeModelId, isModelReady, modelSizes } = useModel();
   const {
     downloadModel,
     cancelDownloading,
@@ -72,6 +72,7 @@ export default function Models() {
           return (
             <ModelCard
               model={catalogModel}
+              dynamicSize={modelSizes[catalogModel.id]}
               modelStatus={status as any}
               isActive={activeModelId === catalogModel.id}
               progress={localState?.downloadProgress || 0}
