@@ -45,7 +45,6 @@
           ]
         }
       ],
-      "react-native-enriched-markdown",
       "expo-asset",
       "expo-build-properties"
     ],

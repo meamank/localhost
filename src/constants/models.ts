@@ -1,62 +1,56 @@
 import { ModelMeta } from "@/src/types/index";
-import {
-  LLAMA3_2_1B,
-  QWEN3_5_0_8B_QUANTIZED,
-  SMOLLM2_1_135M_QUANTIZED,
-  SMOLLM2_1_1_7B_QUANTIZED,
-} from "react-native-executorch/src/constants/modelUrls";
+import { models } from "react-native-executorch";
 
-export const AVAILABLE_MODELS: ModelMeta[] = [
-  {
-    id: QWEN3_5_0_8B_QUANTIZED.modelName,
-    org: "Qwen",
-    logo_url:
-      "https://cdn-avatars.huggingface.co/v1/production/uploads/620760a26e3b7210c2ff1943/-s1gyJfvbE1RgO5iBeNOi.png",
-    name: "Qwen 3.5 0.8B",
-    description: "Quantized Qwen 3.5 0.8B model for ExecuTorch",
-    size: 0.8,
-    fileName: "qwen_3_5_0_8b.pte",
-    downloadUrl: QWEN3_5_0_8B_QUANTIZED.modelSource,
-    tokenizerUrl: QWEN3_5_0_8B_QUANTIZED.tokenizerSource,
-    tokenizerConfigUrl: QWEN3_5_0_8B_QUANTIZED.tokenizerConfigSource,
-  },
-  {
-    id: LLAMA3_2_1B.modelName,
-    org: "Meta",
-    logo_url:
-      "https://cdn-avatars.huggingface.co/v1/production/uploads/6306637482810a0a58bc28a0/F31h_U99Wv1xN_Vf7I4b8.png",
-    name: "Llama 3.2 1B",
-    description: "Llama 3.2 1B base model for ExecuTorch",
-    size: 1.0,
-    fileName: "llama_3_2_1b.pte",
-    downloadUrl: LLAMA3_2_1B.modelSource,
-    tokenizerUrl: LLAMA3_2_1B.tokenizerSource,
-    tokenizerConfigUrl: LLAMA3_2_1B.tokenizerConfigSource,
-  },
-  {
-    id: SMOLLM2_1_135M_QUANTIZED.modelName,
-    org: "HuggingFace",
-    logo_url:
-      "https://cdn-avatars.huggingface.co/v1/production/uploads/1628186175628-608b0870ed292b001a1538fc.jpeg",
-    name: "SmolLM2.1 135M",
-    description: "Quantized SmolLM2.1 135M for ExecuTorch",
-    size: 0.15,
-    fileName: "smollm2_1_135m.pte",
-    downloadUrl: SMOLLM2_1_135M_QUANTIZED.modelSource,
-    tokenizerUrl: SMOLLM2_1_135M_QUANTIZED.tokenizerSource,
-    tokenizerConfigUrl: SMOLLM2_1_135M_QUANTIZED.tokenizerConfigSource,
-  },
-  {
-    id: SMOLLM2_1_1_7B_QUANTIZED.modelName,
-    org: "HuggingFace",
-    logo_url:
-      "https://cdn-avatars.huggingface.co/v1/production/uploads/1628186175628-608b0870ed292b001a1538fc.jpeg",
-    name: "SmolLM2.1 1.7B",
-    description: "Quantized SmolLM2.1 1.7B for ExecuTorch",
-    size: 1.8,
-    fileName: "smollm2_1_1_7b.pte",
-    downloadUrl: SMOLLM2_1_1_7B_QUANTIZED.modelSource,
-    tokenizerUrl: SMOLLM2_1_1_7B_QUANTIZED.tokenizerSource,
-    tokenizerConfigUrl: SMOLLM2_1_1_7B_QUANTIZED.tokenizerConfigSource,
-  },
-];
+function getUIMetadata(id: string) {
+  const logos = {
+    meta: "https://cdn-avatars.huggingface.co/v1/production/uploads/646cf8084eefb026fb8fd8bc/oCTqufkdTkjyGodsx1vo1.png",
+    qwen: "https://cdn-avatars.huggingface.co/v1/production/uploads/620760a26e3b7210c2ff1943/-s1gyJfvbE1RgO5iBeNOi.png",
+    microsoft:
+      "https://cdn-avatars.huggingface.co/v1/production/uploads/1583646260758-5e64858c87403103f9f1055d.png",
+    huggingface:
+      "https://cdn-avatars.huggingface.co/v1/production/uploads/651e96991b97c9f33d26bde6/e4VK7uW5sTeCYupD0s_ob.png",
+    liquidAI:
+      "https://cdn-avatars.huggingface.co/v1/production/uploads/61b8e2ba285851687028d395/EsTgVtnM2IqVRKgPdfqcB.png",
+  };
+
+  const nameLower = id.toLowerCase();
+
+  if (nameLower.includes("llama")) return { org: "Meta", logo_url: logos.meta };
+  if (nameLower.includes("qwen")) return { org: "Qwen", logo_url: logos.qwen };
+  if (nameLower.includes("phi"))
+    return { org: "Microsoft", logo_url: logos.microsoft };
+  if (nameLower.includes("smollm"))
+    return { org: "HuggingFace", logo_url: logos.huggingface };
+  if (nameLower.includes("LFM"))
+    return { org: "LiquidAI", logo_url: logos.liquidAI };
+
+  return { org: "Community", logo_url: logos.huggingface }; // Fallback
+}
+
+export const getModelsData = (): ModelMeta[] => {
+  const allModels = Object.values(models.llm);
+
+  const configArray = allModels.map((modelFn: any) => {
+    // (passing { quant: true } defaults to the quantized version if available)
+    const config = modelFn({ quant: true });
+
+    const id = config.modelName;
+    const uiMeta = getUIMetadata(id);
+
+    return {
+      id,
+      org: uiMeta.org,
+      logo_url: uiMeta.logo_url,
+      name: id.replace(/_|-/g, " ").toUpperCase(),
+      description: `${uiMeta.org} model optimized for ExecuTorch`,
+      fileName: id,
+      downloadUrl: config.modelSource,
+      tokenizerUrl: config.tokenizerSource,
+      tokenizerConfigUrl: config.tokenizerConfigSource,
+    } as ModelMeta;
+  });
+
+  return configArray;
+};
+
+export const AVAILABLE_MODELS: ModelMeta[] = getModelsData();
