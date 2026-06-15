@@ -13,6 +13,10 @@ export const modelStore = {
     return AsyncStorage.getItem(LAST_MODEL_ID);
   },
 
+  async clearLastModelId(): Promise<void> {
+    return AsyncStorage.removeItem(LAST_MODEL_ID);
+  },
+
   async saveDownloadedModels(models: LocalModel[]): Promise<void> {
     const cleaned = models.map((model) => ({
       ...model,

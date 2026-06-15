@@ -6,13 +6,18 @@ import { KeyboardChatScrollView } from "react-native-keyboard-controller";
 
 import { Icon } from "../Icon";
 import MessageBubble from "./MessageBubble";
+
+interface MessageListProps {
+  messages: Message[];
+  activeModelId: string | null;
+  tokensPerSecond: number;
+}
+
 export default function MessageList({
   messages,
   activeModelId,
-}: {
-  messages: Message[];
-  activeModelId: string | null;
-}) {
+  tokensPerSecond,
+}: MessageListProps) {
   const flatListRef = useRef<FlatList>(null);
 
   const EmptyChat = () => {
@@ -62,10 +67,10 @@ export default function MessageList({
       keyExtractor={(item) => item.id}
       renderItem={({ item, index }) => (
         <MessageBubble
+          key={index}
           message={item}
           isStreaming={item.isStreaming}
-          tokensPerSecond={item.tokensPerSecond}
-          input_per_second={item.input_per_second}
+          tokensPerSecond={index === messages.length - 1 ? tokensPerSecond : undefined}
         />
       )}
       ListEmptyComponent={EmptyChat}

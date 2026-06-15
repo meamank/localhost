@@ -82,14 +82,14 @@ export default function ModelCard({
       </Text>
 
       {/* Specs */}
-      <View className="flex-row justify-between">
+      {/* <View className="flex-row justify-between">
         <Text className="text-sm text-foreground-tertiary">
           RAM Required: {model.ramRequiredGB} GB
         </Text>
         <Text className="text-sm text-foreground-tertiary">
           Model Size: {model.size} GB
         </Text>
-      </View>
+      </View> */}
 
       {/* Progress bar */}
       {(modelStatus === "downloading" || modelStatus === "paused") && (

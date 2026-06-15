@@ -5,14 +5,18 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { initExecutorch } from "react-native-executorch";
+import { ExpoResourceFetcher } from "react-native-executorch-expo-resource-fetcher";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import "react-native-reanimated";
-
 export {
   // Catch any errors thrown by the Layout component.
   ErrorBoundary
 } from "expo-router";
 
+initExecutorch({
+  resourceFetcher: ExpoResourceFetcher,
+});
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 

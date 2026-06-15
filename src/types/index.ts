@@ -4,12 +4,11 @@ export interface ModelMeta {
   logo_url: string;
   name: string;
   description?: string;
-  ramRequiredGB?: number;
   fileName: string;
   size: number;
-  downloadUrl?: string;
-  nGpuLayers: number;
-  nCtx: number;
+  downloadUrl: string;
+  tokenizerUrl: string; // Path to tokenizer.model
+  tokenizerConfigUrl?: string; // Path to tokenizer_config.json
 }
 
 export type ModelStatus =
@@ -23,10 +22,12 @@ export type ModelStatus =
 
 export interface LocalModel extends ModelMeta {
   status: ModelStatus;
-  filePath: string;
+  filePath: string; // Path to the .pte model file
+  tokenizerPath: string; // Path to tokenizer.model
+  tokenizerConfigPath?: string; // Path to tokenizer_config.json
   downloadProgress?: number;
-  isFromDevice: boolean;
-  error?: string;
+  isFromDevice?: boolean;
+  size: number;
 }
 
 export type Message = {

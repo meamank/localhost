@@ -4,12 +4,14 @@ import { Pressable, TextInput, useColorScheme, View } from "react-native";
 import { Icon } from "../Icon";
 interface ChatInputProps {
   isGenerating: boolean;
+  isReady: boolean;
   onSend: (text: string) => void;
   onStop: () => void;
 }
 
 export default function ChatInput({
   isGenerating,
+  isReady,
   onSend,
   onStop,
 }: ChatInputProps) {
@@ -31,11 +33,11 @@ export default function ChatInput({
         <TextInput
           value={text}
           onChangeText={setText}
-          placeholder={`${activeModelId ? "Ask Anything" : "Load a Model first.."}`}
+          placeholder={`${isReady ? "Ask Anything" : "Load a Model first.."}`}
           placeholderTextColor="#8f8f8f"
           multiline
           maxLength={2000}
-          editable={!isGenerating && !!activeModelId}
+          editable={!isGenerating && isReady}
           className="max-h-32 min-h-11 flex-1 text-base text-foreground-primary"
           onSubmitEditing={handleSend}
         />

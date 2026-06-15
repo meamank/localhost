@@ -9,14 +9,12 @@ interface MessageBubbleProps {
   message: Message;
   isStreaming: boolean;
   tokensPerSecond?: number;
-  input_per_second?: number;
 }
 
 export default function MessageBubble({
   message,
   isStreaming,
   tokensPerSecond,
-  input_per_second,
 }: MessageBubbleProps) {
   const isUser = message.role === "user";
 
@@ -104,7 +102,7 @@ export default function MessageBubble({
             {tokensPerSecond !== undefined && tokensPerSecond > 0 && (
               <View className="flex-row border-t border-border mt-2 justify-end">
                 <Text className="text-foreground-primary text-sm mt-2">
-                  {Math.round(tokensPerSecond)} tokens/s
+                  {tokensPerSecond} tokens/s
                 </Text>
               </View>
             )}

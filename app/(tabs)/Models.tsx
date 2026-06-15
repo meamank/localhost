@@ -5,16 +5,21 @@ import iconColors from "@/src/constants/IconColors";
 import { AVAILABLE_MODELS } from "@/src/constants/models";
 import { useModel } from "@/src/context/ModelContext";
 import { useModelDownload } from "@/src/hooks/useModelDownload";
-import { useModelInit } from "@/src/hooks/useModelInit";
+import { useModelSelection } from "@/src/hooks/useModelSelection";
+
 import { Stack } from "expo-router";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, Pressable, View } from "react-native";
 
 export default function Models() {
-  const { localModels, activeModelId, deviceInfo, removeLocalModel } =
-    useModel();
-  const { downloadModel, cancelDownload, resumeDownloading, pauseDownloading } =
-    useModelDownload();
-  const { initModel } = useModelInit();
+  const { localModels, activeModelId, isModelReady } = useModel();
+  const {
+    downloadModel,
+    cancelDownloading,
+    resumeDownloading,
+    pauseDownloading,
+    deleteDownloaded,
+  } = useModelDownload();
+  const { selectModel } = useModelSelection();
 
   const colorScheme = useColorScheme();
   return (
@@ -36,7 +41,7 @@ export default function Models() {
           ),
         }}
       />
-      <View className="bg-background-secondary rounded-sm p-2 gap-2">
+      {/* <View className="bg-background-secondary rounded-sm p-2 gap-2">
         <Text className="text-foreground-primary text-base font-bold">
           Device Details:
         </Text>
@@ -44,7 +49,7 @@ export default function Models() {
           RAM:{deviceInfo?.totalRam?.toFixed(2) ?? 0} GB · Disk Available:{" "}
           {deviceInfo?.freeStorage?.toFixed(2) ?? 0} GB
         </Text>
-      </View>
+      </View> */}
 
       {/* Model Cards */}
 
@@ -59,21 +64,24 @@ export default function Models() {
             (model) => model.id === catalogModel.id,
           );
 
-          const status = localState?.status || "not downloaded";
+          let status = localState?.status || "not downloaded";
+          if (activeModelId === catalogModel.id) {
+            status = isModelReady ? "ready" : "initializing";
+          }
 
           return (
             <ModelCard
               model={catalogModel}
-              modelStatus={status}
+              modelStatus={status as any}
               isActive={activeModelId === catalogModel.id}
               progress={localState?.downloadProgress || 0}
               error={null}
               onDownload={() => downloadModel(catalogModel)}
-              onInit={() => localState && initModel(localState)}
-              onCancel={() => cancelDownload(catalogModel)}
+              onInit={() => localState && selectModel(localState)}
+              onCancel={() => cancelDownloading(catalogModel)}
               onPause={() => pauseDownloading(catalogModel)}
               onResume={() => resumeDownloading(catalogModel)}
-              onDelete={() => removeLocalModel(catalogModel.id)}
+              onDelete={() => deleteDownloaded(catalogModel)}
             />
           );
         }}

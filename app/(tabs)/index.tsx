@@ -4,19 +4,58 @@ import { useColorScheme } from "@/src/components/useColorScheme";
 import { useModel } from "@/src/context/ModelContext";
 import { useChat } from "@/src/hooks/useChat";
 import { Stack } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { KeyboardStickyView } from "react-native-keyboard-controller";
 export default function Index() {
-  // ── All hooks at the top ──────────────────────────────────────────────────
-  const { messages, isGenerating, sendMessage, clearChat, stopGeneration } =
-    useChat();
+  const {
+    messages,
+    isGenerating,
+    isReady,
+    sendMessage,
+    clearChat,
+    stopGeneration,
+    generatedTokensCount,
+    promptTokenCount,
+    totalTokenCount,
+  } = useChat();
 
-  const { isInitializing, activeModelId, localModels } = useModel();
+  const { isInitializing, activeModelId, localModels, setIsModelReady } =
+    useModel();
 
   const colorScheme = useColorScheme();
 
+  const [tokensPerSecond, setTokensPerSecond] = useState(0);
+
   const activeModel = localModels.find((model) => model.id === activeModelId);
   const activeModelName = activeModel?.name || "Nirvah";
+
+  useEffect(() => {
+    setIsModelReady(isReady);
+  }, [isReady, setIsModelReady]);
+
+  const startTimeRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (isGenerating) {
+      if (!startTimeRef.current) startTimeRef.current = performance.now();
+    } else {
+      if (
+        startTimeRef.current &&
+        messages.length > 0 &&
+        messages[messages.length - 1].role === "assistant"
+      ) {
+        // Calculate Tokens/Second
+        const elapsedSec = (performance.now() - startTimeRef.current) / 1000;
+        const generated = generatedTokensCount() || 0;
+        const tps =
+          elapsedSec > 0 ? parseFloat((generated / elapsedSec).toFixed(2)) : 0;
+
+        setTokensPerSecond(tps);
+      }
+      startTimeRef.current = null;
+    }
+  }, [isGenerating]);
 
   if (isInitializing) {
     return (
@@ -42,7 +81,11 @@ export default function Index() {
         }}
       />
 
-      <MessageList messages={messages} activeModelId={activeModelId} />
+      <MessageList
+        messages={messages}
+        activeModelId={activeModelId}
+        tokensPerSecond={tokensPerSecond}
+      />
 
       <KeyboardStickyView
         offset={{
@@ -52,6 +95,7 @@ export default function Index() {
       >
         <ChatInput
           isGenerating={isGenerating}
+          isReady={isReady}
           onSend={sendMessage}
           onStop={stopGeneration}
         />

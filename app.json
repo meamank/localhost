@@ -36,15 +36,6 @@
         }
       ],
       [
-        "./plugins/withLlamaRN.js",
-        {
-          "enableEntitlements": true,
-          "entitlementsProfile": "production",
-          "forceCxx20": true,
-          "enableOpenCLAndHexagon": true
-        }
-      ],
-      [
         "react-native-nano-icons",
         {
           "iconSets": [
@@ -54,7 +45,9 @@
           ]
         }
       ],
-      "react-native-enriched-markdown"
+      "react-native-enriched-markdown",
+      "expo-asset",
+      "expo-build-properties"
     ],
     "experiments": {
       "typedRoutes": true

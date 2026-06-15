@@ -1,132 +1,106 @@
-import { useRef, useState } from "react";
+import { useLLM } from "react-native-executorch";
 import { useModel } from "../context/ModelContext";
 import { Message } from "../types";
 
-const GEMMA_STOP_TOKENS = ["<end_of_turn>", "<eos>", "<|end|>"];
-
 export function useChat() {
-  const { llamaContextRef } = useModel();
+  const { localModels, activeModelId } = useModel();
 
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const activeModel = localModels.find((model) => model.id === activeModelId);
 
-  const messagesRef = useRef<Message[]>([]);
-
-  messagesRef.current = messages;
+  const {
+    messageHistory,
+    response,
+    isGenerating,
+    isReady,
+    sendMessage,
+    getGeneratedTokenCount,
+    getPromptTokenCount,
+    getTotalTokenCount,
+    interrupt,
+    deleteMessage,
+  } = useLLM({
+    preventLoad: !activeModel,
+    model: {
+      modelName: (activeModel?.id || "") as any,
+      modelSource: activeModel?.filePath
+        ? `file://${activeModel.filePath}`
+        : "",
+      tokenizerSource: activeModel?.tokenizerPath
+        ? `file://${activeModel.tokenizerPath}`
+        : "",
+      tokenizerConfigSource: activeModel?.tokenizerConfigPath
+        ? `file://${activeModel.tokenizerConfigPath}`
+        : "",
+    },
+  });
 
   // sends reply
+  const sendUserMessage = async (content: string) => {
+    if (!isReady || isGenerating) return;
 
-  async function sendMessage(content: string) {
-    if (!llamaContextRef.current) {
-      console.warn("Model not ready!");
-      return;
-    }
-    if (isGenerating) return;
-    if (!content.trim()) return;
-
-    const userMsg: Message = {
-      id: `User_${Date.now()}`,
-      role: "user",
-      content: content.trim(),
-      timestamp: Date.now(),
-    };
-
-    const assistantMsg: Message = {
-      id: `assistant_${Date.now() + 1}`,
-      role: "assistant",
-      content: "",
-      timestamp: Date.now(),
-      isStreaming: true,
-    };
-
-    // Build completion messages BEFORE updating state
-    // messagesRef.current has the pre-send history (no userMsg yet)
-    const completionMessages = [...messagesRef.current, userMsg].map((msg) => ({
-      role: msg.role,
-      content: msg.content,
-    }));
-
-    setMessages((prev) => [...prev, userMsg, assistantMsg]);
-    setIsGenerating(true);
-
-    try {
-      const result = await llamaContextRef.current?.completion(
-        {
-          messages: completionMessages,
-          n_predict: 1024,
-          temperature: 0.7,
-          top_p: 0.9,
-          top_k: 40,
-          stop: GEMMA_STOP_TOKENS,
-        },
-        (data: { token: string }) => {
-          if (!data.token) return;
-
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantMsg.id
-                ? { ...msg, content: msg.content + data.token }
-                : msg,
-            ),
-          );
-        },
-      );
-
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === assistantMsg.id
-            ? {
-                ...msg,
-                isStreaming: false,
-                tokensPerSecond: result?.timings.predicted_per_second,
-                input_per_second: result?.timings.prompt_per_second,
-                tokens_evaluated: result?.tokens_evaluated,
-                prompt_ms: result?.timings.prompt_ms,
-                tokens_predicted: result?.tokens_predicted,
-                predicted_ms: result?.timings.predicted_ms,
-              }
-            : msg,
-        ),
-      );
-    } catch (error) {
-      console.error("Chat Error", error);
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === assistantMsg.id
-            ? {
-                ...msg,
-                content: msg.content + "\n\n*(Error generating response)*",
-                isStreaming: false,
-              }
-            : msg,
-        ),
-      );
-    } finally {
-      setIsGenerating(false);
-    }
-  }
+    await sendMessage(content);
+  };
 
   // stop generating reply
-
-  function stopGeneration() {
-    llamaContextRef.current?.stopCompletion();
-    setIsGenerating(false);
-  }
+  const stopGeneration = () => {
+    if (isGenerating) {
+      interrupt();
+    }
+  };
 
   // clear chat
-
   function clearChat() {
     if (isGenerating) {
       stopGeneration();
     }
-    setMessages([]);
+    deleteMessage(0); // Deletes all messages starting from index 0
+  }
+
+  // Returns the number of tokens generated so far in the current generation.
+
+  const generatedTokensCount = () => {
+    return getGeneratedTokenCount();
+  };
+
+  //Returns the number of prompt tokens in the last message.
+  const promptTokenCount = () => {
+    return getPromptTokenCount();
+  };
+
+  // Returns the number of total tokens from the previous generation.
+  // This is a sum of prompt tokens and generated tokens.
+
+  const totalTokenCount = () => {
+    return getTotalTokenCount();
+  };
+
+  // Message History and append streaming response
+  const messages: Message[] = messageHistory.map((msg, idx) => ({
+    id: `msg_${idx}`,
+    role: msg.role,
+    content: msg.content,
+    timestamp: Date.now(),
+  }));
+
+  if (isGenerating && response) {
+    messages.push({
+      id: "streaming_response",
+      role: "assistant",
+      content: response,
+      timestamp: Date.now(),
+      isStreaming: true,
+    });
   }
 
   return {
     messages,
     isGenerating,
-    sendMessage,
+    sendMessage: sendUserMessage,
     stopGeneration,
     clearChat,
+    isReady,
+    generatedTokensCount,
+    promptTokenCount,
+    totalTokenCount,
   };
 }
