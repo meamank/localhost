@@ -1,9 +1,10 @@
+import { useEffect } from "react";
 import { useLLM } from "react-native-executorch";
 import { useModel } from "../context/ModelContext";
 import { Message } from "../types";
 
 export function useChat() {
-  const { localModels, activeModelId } = useModel();
+  const { localModels, activeModelId, activeModelConfig } = useModel();
 
   const activeModel = localModels.find((model) => model.id === activeModelId);
 
@@ -18,6 +19,7 @@ export function useChat() {
     getTotalTokenCount,
     interrupt,
     deleteMessage,
+    configure,
   } = useLLM({
     preventLoad: !activeModel,
     model: {
@@ -33,6 +35,51 @@ export function useChat() {
         : "",
     },
   });
+
+  useEffect(() => {
+    if (isReady && activeModelId) {
+      const config = activeModelConfig || {};
+
+      const chatConfig: any = {};
+      if (config.systemPrompt) {
+        chatConfig.systemPrompt = config.systemPrompt;
+      }
+
+      const generationConfig: any = {};
+      if (config.temperature !== undefined) {
+        generationConfig.temperature = config.temperature;
+      }
+      if (config.topP !== undefined) {
+        generationConfig.topP = config.topP;
+      }
+      if (config.repetitionPenalty !== undefined) {
+        generationConfig.repetitionPenalty = config.repetitionPenalty;
+      }
+
+      const hasChatConfig = Object.keys(chatConfig).length > 0;
+      const hasGenConfig = Object.keys(generationConfig).length > 0;
+
+      if (hasChatConfig || hasGenConfig) {
+        const configToApply = {
+          ...(hasChatConfig && { chatConfig }),
+          ...(hasGenConfig && { generationConfig }),
+        };
+
+        try {
+          configure(configToApply);
+        } catch (e) {
+          console.log(
+            "Skipping configuration, model is likely unloading or not fully loaded:",
+            e,
+          );
+        }
+      } else {
+        console.log(
+          "No custom configuration to apply. Relying on ExecuTorch defaults.",
+        );
+      }
+    }
+  }, [isReady, activeModelId, activeModelConfig, configure]);
 
   // sends reply
   const sendUserMessage = async (content: string) => {

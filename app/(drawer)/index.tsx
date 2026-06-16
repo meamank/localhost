@@ -1,9 +1,11 @@
 import ChatInput from "@/src/components/chat/ChatInput";
 import MessageList from "@/src/components/chat/MessageList";
+import { Icon } from "@/src/components/Icon";
 import { useColorScheme } from "@/src/components/useColorScheme";
+import iconColors from "@/src/constants/IconColors";
 import { useModel } from "@/src/context/ModelContext";
 import { useChat } from "@/src/hooks/useChat";
-import { Stack } from "expo-router";
+import { router, Stack } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { KeyboardStickyView } from "react-native-keyboard-controller";
@@ -72,10 +74,15 @@ export default function Index() {
         options={{
           title: activeModelName,
           headerRight: () => (
-            <Pressable onPress={clearChat} style={{ paddingRight: 16 }}>
-              <Text className="bg-background-secondary text-foreground-primary px-2 py-1 rounded-sm text-base">
-                Clear
-              </Text>
+            <Pressable
+              onPress={() => router.push(`/(drawer)/${activeModelId}`)}
+              style={{ paddingRight: 16 }}
+            >
+              <Icon
+                name="settings"
+                size={28}
+                color={iconColors[colorScheme].primary}
+              />
             </Pressable>
           ),
         }}
@@ -89,8 +96,8 @@ export default function Index() {
 
       <KeyboardStickyView
         offset={{
-          closed: 0,
-          opened: 60,
+          closed: -20,
+          opened: 0,
         }}
       >
         <ChatInput

@@ -5,17 +5,18 @@ import { useClientOnlyValue } from "@/src/components/useClientOnlyValue";
 import { useColorScheme } from "@/src/components/useColorScheme";
 import Colors from "@/src/constants/Colors";
 import iconColors from "@/src/constants/IconColors";
-import { Tabs } from "expo-router";
+
+import { Drawer } from "expo-router/drawer";
 import { Pressable } from "react-native";
 
-export default function TabLayout() {
+export default function DrawerLayout() {
   const colorScheme = useColorScheme();
   const headerColor = colorScheme === "light" ? "#ffffff" : "#212121";
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
+    <Drawer
+      screenOptions={({ navigation }: any) => ({
+        drawerActiveTintColor: Colors[colorScheme].tint,
         headerShown: useClientOnlyValue(false, true),
         headerStyle: {
           backgroundColor: headerColor,
@@ -27,7 +28,7 @@ export default function TabLayout() {
         headerTitleAlign: "center",
         headerLeft: () => (
           <Pressable
-            onPress={() => console.log("Icon pressed!")}
+            onPress={() => navigation.toggleDrawer()}
             style={{ paddingLeft: 16 }}
           >
             <Icon
@@ -37,26 +38,33 @@ export default function TabLayout() {
             />
           </Pressable>
         ),
-      }}
+      })}
     >
-      <Tabs.Screen
+      <Drawer.Screen
         name="index"
         options={{
-          tabBarLabel: "Chat",
-          tabBarIcon: ({ color }) => (
+          drawerLabel: "Chat",
+          drawerIcon: ({ color }) => (
             <Icon name="chat-tab" size={28} color={color} />
           ),
         }}
       />
-      <Tabs.Screen
+      <Drawer.Screen
         name="Models"
         options={{
           title: "Models",
-          tabBarIcon: ({ color }) => (
+          drawerIcon: ({ color }) => (
             <Icon name="models-tab" size={28} color={color} />
           ),
         }}
       />
-    </Tabs>
+      <Drawer.Screen
+        name="[id]"
+        options={{
+          title: "Model Configuration",
+          drawerItemStyle: { display: "none" },
+        }}
+      />
+    </Drawer>
   );
 }

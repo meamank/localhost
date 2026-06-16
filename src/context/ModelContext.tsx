@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { ExpoResourceFetcher } from "react-native-executorch-expo-resource-fetcher";
 import { AVAILABLE_MODELS } from "../constants/models";
 import { modelStore } from "../store/modelStore";
-import { LocalModel, ModelStatus } from "../types";
+import { LocalModel, ModelConfig, ModelStatus } from "../types";
 
 interface ModelContextType {
   localModels: LocalModel[];
@@ -13,8 +13,11 @@ interface ModelContextType {
   setIsModelReady: (isReady: boolean) => void;
 
   modelSizes: Record<string, number>;
+  activeModelConfig: ModelConfig | null;
 
   addLocalModel: (model: LocalModel) => Promise<void>;
+  updateModelConfig: (id: string, config: Partial<ModelConfig>) => void;
+  clearModelConfig: (id: string) => void;
   updateModelStatus: (
     id: string,
     status: ModelStatus,
@@ -40,6 +43,27 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
   const [isInitializing, setIsInitializing] = useState(false);
   const [isModelReady, setIsModelReady] = useState(false);
   const [modelSizes, setModelSizes] = useState<Record<string, number>>({});
+  const [activeModelConfig, setActiveModelConfig] = useState<ModelConfig | null>(null);
+
+  const updateModelConfig = async (id: string, config: Partial<ModelConfig>) => {
+    setActiveModelConfig((prev) => {
+      const updated = {
+        ...(prev || {}),
+        ...config,
+      };
+      modelStore.saveModelConfig(id, updated).catch((err) =>
+        console.error("Failed to save model config", err)
+      );
+      return updated;
+    });
+  };
+
+  const clearModelConfig = async (id: string) => {
+    setActiveModelConfig(null);
+    modelStore.clearModelConfig(id).catch((err) =>
+      console.error("Failed to clear model config", err)
+    );
+  };
 
   // Update Model Status
 
@@ -99,6 +123,16 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
       await modelStore.clearLastModelId();
     }
   };
+
+  useEffect(() => {
+    if (activeModelId) {
+      modelStore.getModelConfig(activeModelId).then((config) => {
+        setActiveModelConfig(config);
+      });
+    } else {
+      setActiveModelConfig(null);
+    }
+  }, [activeModelId]);
 
   useEffect(() => {
     const initializeStorage = async () => {
@@ -180,6 +214,9 @@ export function ModelProvider({ children }: { children: React.ReactNode }) {
         isModelReady,
         setIsModelReady,
         modelSizes,
+        activeModelConfig,
+        updateModelConfig,
+        clearModelConfig,
         addLocalModel,
         updateModelStatus,
         setActiveModelId,

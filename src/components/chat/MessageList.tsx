@@ -48,7 +48,7 @@ export default function MessageList({
         </Text>
         <Pressable
           className="bg-primary px-4 py-3 rounded-full"
-          onPress={() => router.push("/(tabs)/Models")}
+          onPress={() => router.push("/(drawer)/Models")}
         >
           <Text className="text-foreground-primary text-sm">
             Choose Your Model
@@ -70,7 +70,9 @@ export default function MessageList({
           key={index}
           message={item}
           isStreaming={item.isStreaming}
-          tokensPerSecond={index === messages.length - 1 ? tokensPerSecond : undefined}
+          tokensPerSecond={
+            index === messages.length - 1 ? tokensPerSecond : undefined
+          }
         />
       )}
       ListEmptyComponent={EmptyChat}

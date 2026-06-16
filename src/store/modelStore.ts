@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { LocalModel } from "../types";
+import { LocalModel, ModelConfig } from "../types";
 
 const LAST_MODEL_ID = "last_model_id";
 const DOWNLOADED_MODELS_KEY = "downloaded_models";
@@ -41,5 +41,19 @@ export const modelStore = {
     const data = await AsyncStorage.getItem("model_sizes_cache");
     if (!data) return {};
     return JSON.parse(data);
+  },
+
+  async saveModelConfig(id: string, config: ModelConfig): Promise<void> {
+    return AsyncStorage.setItem(`model_config_${id}`, JSON.stringify(config));
+  },
+
+  async getModelConfig(id: string): Promise<ModelConfig | null> {
+    const data = await AsyncStorage.getItem(`model_config_${id}`);
+    if (!data) return null;
+    return JSON.parse(data);
+  },
+
+  async clearModelConfig(id: string): Promise<void> {
+    return AsyncStorage.removeItem(`model_config_${id}`);
   },
 };

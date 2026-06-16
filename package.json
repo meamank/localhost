@@ -27,6 +27,7 @@
     "react-native-enriched-markdown": "^0.6.0",
     "react-native-executorch": "^0.9.1",
     "react-native-executorch-expo-resource-fetcher": "^0.9.1",
+    "react-native-gesture-handler": "~2.31.1",
     "react-native-keyboard-controller": "1.21.6",
     "react-native-nano-icons": "^0.1.8",
     "react-native-reanimated": "4.3.1",
@@ -44,8 +45,8 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
-    "start": "APP_VARIANT=development expo start -c -a",
-    "android": "APP_VARIANT=development expo run:android --no-build-cache",
+    "start": "APP_VARIANT=production expo start -c -a",
+    "android": "APP_VARIANT=production expo run:android --no-build-cache",
     "ios": "expo run:ios",
     "web": "expo start --web"
   },

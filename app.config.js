@@ -14,7 +14,7 @@ export default ({ config }) => {
       supportsTablet: true,
       bundleIdentifier: IS_DEV
         ? "com.sherlock18.nirvah.dev"
-        : config.ios.bundleIdentifier,
+        : config.ios?.bundleIdentifier || "com.sherlock18.nirvah",
     },
     android: {
       adaptiveIcon: {
@@ -24,7 +24,7 @@ export default ({ config }) => {
         monochromeImage: "./src/assets/images/android-icon-monochrome.png",
       },
       predictiveBackGestureEnabled: false,
-      package: IS_DEV ? "com.sherlock18.nirvah.dev" : config.android.package,
+      package: IS_DEV ? "com.sherlock18.nirvah.dev" : config.android?.package,
     },
     web: {
       bundler: "metro",

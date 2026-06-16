@@ -44,3 +44,10 @@ export type Message = {
   tokens_predicted?: number;
   predicted_ms?: number;
 };
+
+export interface ModelConfig {
+  systemPrompt?: string;
+  repetitionPenalty?: number;
+  temperature?: number;
+  topP?: number;
+}
