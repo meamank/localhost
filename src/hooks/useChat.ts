@@ -146,6 +146,7 @@ export function useChat() {
     stopGeneration,
     clearChat,
     isReady,
+    response,
     generatedTokensCount,
     promptTokenCount,
     totalTokenCount,

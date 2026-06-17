@@ -1,5 +1,5 @@
 import iconColors from "@/src/constants/IconColors";
-import { Alert, Linking, Text, View } from "react-native";
+import { Alert, Image, Linking, Text, View } from "react-native";
 import type { MarkdownStyle } from "react-native-enriched-markdown";
 import { StreamdownText } from "react-native-streamdown";
 import { Message } from "../../types";
@@ -73,17 +73,30 @@ export default function MessageBubble({
     ]);
   };
 
+  console.log("in Bubble:", tokensPerSecond);
+
   return (
     <View
       className={`flex-row ${isUser ? "justify-end" : "justify-start"} mb-4`}
     >
       <View
-        className={`${isUser ? "bg-background-tertiary max-w-[280] rounded-2xl px-4 py-3.5" : "bg-background-primary"}`}
+        className={`${isUser ? "bg-background-tertiary max-w-[280] rounded-2xl px-4 py-3.5" : "bg-background-primary max-w-full"}`}
       >
         {isUser ? (
-          <Text className="text-foreground-primary text-base">
-            {message.content}
-          </Text>
+          <View className="flex-col gap-2">
+            {message.mediaPath && (
+              <Image
+                source={{ uri: message.mediaPath }}
+                className="w-48 h-48 rounded-lg"
+                resizeMode="cover"
+              />
+            )}
+            {!!message.content && (
+              <Text className="text-foreground-primary text-base">
+                {message.content}
+              </Text>
+            )}
+          </View>
         ) : (
           <>
             {isStreaming && (
@@ -99,13 +112,15 @@ export default function MessageBubble({
                 colorScheme === "dark" ? darkMarkdownStyle : lightMarkdownStyle
               }
             />
-            {tokensPerSecond !== undefined && tokensPerSecond > 0 && (
-              <View className="flex-row border-t border-border mt-2 justify-end">
-                <Text className="text-foreground-primary text-sm mt-2">
-                  {tokensPerSecond} tokens/s
-                </Text>
-              </View>
-            )}
+            {!isStreaming &&
+              tokensPerSecond !== undefined &&
+              tokensPerSecond > 0 && (
+                <View className="flex-row border-t border-border mt-2 justify-end">
+                  <Text className="text-foreground-primary text-sm mt-2">
+                    {tokensPerSecond} tokens/s
+                  </Text>
+                </View>
+              )}
           </>
         )}
       </View>

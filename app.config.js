@@ -51,6 +51,7 @@ export default ({ config }) => {
           ],
         },
       ],
+      "expo-sqlite",
       "expo-asset",
       "expo-build-properties",
     ],

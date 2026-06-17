@@ -34,6 +34,7 @@ export type Message = {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
+  mediaPath?: string;
   timestamp: number;
   tokenCount?: number;
   tokensPerSecond?: number;

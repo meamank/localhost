@@ -4,6 +4,7 @@ import { Icon } from "@/src/components/Icon";
 import { useColorScheme } from "@/src/components/useColorScheme";
 import iconColors from "@/src/constants/IconColors";
 import { useModel } from "@/src/context/ModelContext";
+import { useAttachment } from "@/src/hooks/useAttachment";
 import { useChat } from "@/src/hooks/useChat";
 import { router, Stack } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -17,10 +18,12 @@ export default function Index() {
     sendMessage,
     clearChat,
     stopGeneration,
+    response,
     generatedTokensCount,
     promptTokenCount,
     totalTokenCount,
   } = useChat();
+  const { pickAttachment, attachment, removeAttachment } = useAttachment();
 
   const { isInitializing, activeModelId, localModels, setIsModelReady } =
     useModel();
@@ -28,6 +31,7 @@ export default function Index() {
   const colorScheme = useColorScheme();
 
   const [tokensPerSecond, setTokensPerSecond] = useState(0);
+  const generationStartTimeRef = useRef(0);
 
   const activeModel = localModels.find((model) => model.id === activeModelId);
   const activeModelName = activeModel?.name || "Nirvah";
@@ -36,26 +40,17 @@ export default function Index() {
     setIsModelReady(isReady);
   }, [isReady, setIsModelReady]);
 
-  const startTimeRef = useRef<number | null>(null);
-
   useEffect(() => {
     if (isGenerating) {
-      if (!startTimeRef.current) startTimeRef.current = performance.now();
-    } else {
-      if (
-        startTimeRef.current &&
-        messages.length > 0 &&
-        messages[messages.length - 1].role === "assistant"
-      ) {
-        // Calculate Tokens/Second
-        const elapsedSec = (performance.now() - startTimeRef.current) / 1000;
-        const generated = generatedTokensCount() || 0;
-        const tps =
-          elapsedSec > 0 ? parseFloat((generated / elapsedSec).toFixed(2)) : 0;
-
-        setTokensPerSecond(tps);
+      generationStartTimeRef.current = performance.now();
+      setTokensPerSecond(0);
+    } else if (generationStartTimeRef.current > 0) {
+      const elapsed = (performance.now() - generationStartTimeRef.current) / 1000;
+      const tokens = generatedTokensCount();
+      if (elapsed > 0 && tokens > 0) {
+        setTokensPerSecond(Math.round(tokens / elapsed));
       }
-      startTimeRef.current = null;
+      generationStartTimeRef.current = 0;
     }
   }, [isGenerating]);
 
@@ -100,12 +95,17 @@ export default function Index() {
           opened: 0,
         }}
       >
-        <ChatInput
-          isGenerating={isGenerating}
-          isReady={isReady}
-          onSend={sendMessage}
-          onStop={stopGeneration}
-        />
+        <View className="flex-row px-3 py-2 gap-2">
+          <ChatInput
+            isGenerating={isGenerating}
+            isReady={isReady}
+            onSend={sendMessage}
+            onStop={stopGeneration}
+            attachment={attachment || undefined}
+            removeAttachment={removeAttachment}
+            pickAttachment={pickAttachment}
+          />
+        </View>
       </KeyboardStickyView>
     </View>
   );
