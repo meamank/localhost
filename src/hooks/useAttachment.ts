@@ -32,8 +32,6 @@ export const useAttachment = () => {
       : "document";
   };
 
-  console.log("useAttachment-Attachment:", JSON.stringify(attachment, null, 2));
-
   const pickAttachment = async () => {
     const fileResult = await DocumentPicker.getDocumentAsync({
       type: ["application/pdf", "text/plain", "text/markdown", "image/*"],
@@ -44,7 +42,7 @@ export const useAttachment = () => {
 
     try {
       const asset = fileResult.assets[0];
-      console.log("useAttachment-Asset", asset);
+
       const fileExtension: string = asset.uri.split(".").pop() || "";
       const fileName =
         asset.name?.split(".")[0] ||

@@ -12,12 +12,13 @@ import { Pressable } from "react-native";
 export default function DrawerLayout() {
   const colorScheme = useColorScheme();
   const headerColor = colorScheme === "light" ? "#ffffff" : "#212121";
+  const isHeaderShown = useClientOnlyValue(false, true);
 
   return (
     <Drawer
       screenOptions={({ navigation }: any) => ({
         drawerActiveTintColor: Colors[colorScheme].tint,
-        headerShown: useClientOnlyValue(false, true),
+        headerShown: isHeaderShown,
         headerStyle: {
           backgroundColor: headerColor,
         },

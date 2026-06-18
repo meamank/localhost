@@ -1,7 +1,12 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { useLLM } from "react-native-executorch";
+import {
+  FINANCE_TOOLS,
+  createFinanceToolHandler,
+} from "../constants/FinanceTools";
 import { useModel } from "../context/ModelContext";
 import { Message } from "../types";
+import { useFinance } from "./useFinance";
 
 export function useChat() {
   const { localModels, activeModelId, activeModelConfig } = useModel();
@@ -36,14 +41,15 @@ export function useChat() {
     },
   });
 
+  const { addExpense, queryExpenses } = useFinance();
+
   useEffect(() => {
     if (isReady && activeModelId) {
       const config = activeModelConfig || {};
 
-      const chatConfig: any = {};
-      if (config.systemPrompt) {
-        chatConfig.systemPrompt = config.systemPrompt;
-      }
+      const systemPrompt =
+        config.systemPrompt ||
+        `You are Nirvah, a helpful personal finance assistant. Current date: ${new Date().toISOString().split("T")[0]}. When the user mentions spending money, use the log_expense tool to record it. When asked about past spending, use query_expenses. /no_think`;
 
       const generationConfig: any = {};
       if (config.temperature !== undefined) {
@@ -56,30 +62,43 @@ export function useChat() {
         generationConfig.repetitionPenalty = config.repetitionPenalty;
       }
 
-      const hasChatConfig = Object.keys(chatConfig).length > 0;
       const hasGenConfig = Object.keys(generationConfig).length > 0;
 
-      if (hasChatConfig || hasGenConfig) {
-        const configToApply = {
-          ...(hasChatConfig && { chatConfig }),
-          ...(hasGenConfig && { generationConfig }),
-        };
+      const financeToolHandler = createFinanceToolHandler({
+        addExpense,
+        queryExpenses,
+      });
 
-        try {
-          configure(configToApply);
-        } catch (e) {
-          console.log(
-            "Skipping configuration, model is likely unloading or not fully loaded:",
-            e,
-          );
-        }
-      } else {
+      const configToApply: any = {
+        chatConfig: {
+          systemPrompt,
+        },
+        toolsConfig: {
+          tools: FINANCE_TOOLS,
+          executeToolCallback: financeToolHandler,
+          displayToolCalls: false,
+        },
+        ...(hasGenConfig && { generationConfig }),
+      };
+
+      try {
+        configure(configToApply);
+        console.log("[useChat] Configured with finance tools");
+      } catch (e) {
         console.log(
-          "No custom configuration to apply. Relying on ExecuTorch defaults.",
+          "Skipping configuration, model is likely unloading or not fully loaded:",
+          e,
         );
       }
     }
-  }, [isReady, activeModelId, activeModelConfig, configure]);
+  }, [
+    isReady,
+    activeModelId,
+    activeModelConfig,
+    configure,
+    addExpense,
+    queryExpenses,
+  ]);
 
   // sends reply
   const sendUserMessage = async (content: string) => {
@@ -122,22 +141,37 @@ export function useChat() {
   };
 
   // Message History and append streaming response
-  const messages: Message[] = messageHistory.map((msg, idx) => ({
-    id: `msg_${idx}`,
-    role: msg.role,
-    content: msg.content,
-    timestamp: Date.now(),
-  }));
+  const baseMessages: Message[] = React.useMemo(() => {
+    return messageHistory.map((msg, idx) => ({
+      id: `msg_${idx}`,
+      role: msg.role as "user" | "assistant" | "system",
+      content: msg.content,
+      timestamp: 0,
+    }));
+  }, [messageHistory]);
 
-  if (isGenerating && response) {
-    messages.push({
-      id: "streaming_response",
-      role: "assistant",
-      content: response,
-      timestamp: Date.now(),
-      isStreaming: true,
-    });
-  }
+  const messages: Message[] = React.useMemo(() => {
+    const list = [...baseMessages];
+    if (isGenerating && response) {
+      list.push({
+        id: "streaming_response",
+        role: "assistant",
+        content: response,
+        timestamp: Date.now(),
+        isStreaming: true,
+      });
+    }
+    return list;
+  }, [baseMessages, isGenerating, response]);
+
+  useEffect(() => {
+    if (!isGenerating && response) {
+      console.log(
+        "[useChat] Final model response (after generation):",
+        JSON.stringify(response),
+      );
+    }
+  }, [isGenerating]);
 
   return {
     messages,

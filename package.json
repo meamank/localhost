@@ -51,7 +51,8 @@
     "start": "APP_VARIANT=production expo start -c -a",
     "android": "APP_VARIANT=production expo run:android --no-build-cache",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "postinstall": "patch-package"
   },
   "private": true
 }

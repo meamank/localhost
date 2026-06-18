@@ -1,3 +1,4 @@
+import React from "react";
 import iconColors from "@/src/constants/IconColors";
 import { Alert, Image, Linking, Text, View } from "react-native";
 import type { MarkdownStyle } from "react-native-enriched-markdown";
@@ -11,7 +12,7 @@ interface MessageBubbleProps {
   tokensPerSecond?: number;
 }
 
-export default function MessageBubble({
+const MessageBubble = React.memo(function MessageBubble({
   message,
   isStreaming,
   tokensPerSecond,
@@ -73,8 +74,6 @@ export default function MessageBubble({
     ]);
   };
 
-  console.log("in Bubble:", tokensPerSecond);
-
   return (
     <View
       className={`flex-row ${isUser ? "justify-end" : "justify-start"} mb-4`}
@@ -126,4 +125,6 @@ export default function MessageBubble({
       </View>
     </View>
   );
-}
+});
+
+export default MessageBubble;

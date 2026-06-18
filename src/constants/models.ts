@@ -1,5 +1,20 @@
 import { ModelMeta } from "@/src/types/index";
-import { models } from "react-native-executorch";
+import { LLAMA3_2_1B, models } from "react-native-executorch";
+
+const defaultModel: ModelMeta = {
+  id: "llama3_2_qat_lora",
+  org: "Meta",
+  logo_url:
+    "https://cdn-avatars.huggingface.co/v1/production/uploads/646cf8084eefb026fb8fd8bc/oCTqufkdTkjyGodsx1vo1.png",
+  name: "LLAMA 3.2 1B Qlora",
+  description: `Meta model optimized for ExecuTorch`,
+  fileName: "llama3_2_qat_lora",
+  downloadUrl:
+    "https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/main/llama-3.2-1B/QLoRA/llama3_2_qat_lora.pte",
+  tokenizerUrl: LLAMA3_2_1B.tokenizerSource,
+  tokenizerConfigUrl: LLAMA3_2_1B.tokenizerConfigSource,
+  size: 1.18,
+};
 
 function getUIMetadata(id: string) {
   const logos = {
@@ -50,7 +65,7 @@ export const getModelsData = (): ModelMeta[] => {
     } as ModelMeta;
   });
 
-  return configArray;
+  return [defaultModel, ...configArray];
 };
 
 export const AVAILABLE_MODELS: ModelMeta[] = getModelsData();

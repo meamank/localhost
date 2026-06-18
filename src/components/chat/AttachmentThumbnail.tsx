@@ -28,8 +28,6 @@ export default function AttachmentThumbnail({ attachment, onRemove }: Props) {
     }
   };
 
-  console.log("in Thumbnail", attachment);
-
   return (
     <View className="relative">
       {renderContent()}

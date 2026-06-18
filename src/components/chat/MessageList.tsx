@@ -1,6 +1,6 @@
 import { Message } from "@/src/types";
 import { router } from "expo-router";
-import { useRef } from "react";
+import React, { useRef, useCallback } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
 import { KeyboardChatScrollView } from "react-native-keyboard-controller";
 
@@ -58,6 +58,19 @@ export default function MessageList({
     );
   };
 
+  const renderItem = useCallback(
+    ({ item, index }: { item: Message; index: number }) => (
+      <MessageBubble
+        message={item}
+        isStreaming={item.isStreaming || false}
+        tokensPerSecond={
+          index === messages.length - 1 ? tokensPerSecond : undefined
+        }
+      />
+    ),
+    [messages.length, tokensPerSecond]
+  );
+
   return (
     <FlatList
       ref={flatListRef}
@@ -65,16 +78,7 @@ export default function MessageList({
       contentContainerStyle={{ padding: 16, flexGrow: 1 }}
       data={messages}
       keyExtractor={(item) => item.id}
-      renderItem={({ item, index }) => (
-        <MessageBubble
-          key={index}
-          message={item}
-          isStreaming={item.isStreaming}
-          tokensPerSecond={
-            index === messages.length - 1 ? tokensPerSecond : undefined
-          }
-        />
-      )}
+      renderItem={renderItem}
       ListEmptyComponent={EmptyChat}
       onContentSizeChange={() => {
         if (messages.length > 0) {

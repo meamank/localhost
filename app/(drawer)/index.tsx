@@ -7,7 +7,7 @@ import { useModel } from "@/src/context/ModelContext";
 import { useAttachment } from "@/src/hooks/useAttachment";
 import { useChat } from "@/src/hooks/useChat";
 import { router, Stack } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { KeyboardStickyView } from "react-native-keyboard-controller";
 export default function Index() {
@@ -54,6 +54,22 @@ export default function Index() {
     }
   }, [isGenerating]);
 
+  const stackOptions = useMemo(() => ({
+    title: activeModelName,
+    headerRight: () => (
+      <Pressable
+        onPress={() => router.push(`/(drawer)/${activeModelId}`)}
+        style={{ paddingRight: 16 }}
+      >
+        <Icon
+          name="settings"
+          size={28}
+          color={iconColors[colorScheme].primary}
+        />
+      </Pressable>
+    ),
+  }), [activeModelName, activeModelId, colorScheme]);
+
   if (isInitializing) {
     return (
       <View className="flex-1 items-center justify-center gap-3 px-8 bg-background-primary">
@@ -65,23 +81,7 @@ export default function Index() {
 
   return (
     <View className="flex-1 bg-background-primary">
-      <Stack.Screen
-        options={{
-          title: activeModelName,
-          headerRight: () => (
-            <Pressable
-              onPress={() => router.push(`/(drawer)/${activeModelId}`)}
-              style={{ paddingRight: 16 }}
-            >
-              <Icon
-                name="settings"
-                size={28}
-                color={iconColors[colorScheme].primary}
-              />
-            </Pressable>
-          ),
-        }}
-      />
+      <Stack.Screen options={stackOptions} />
 
       <MessageList
         messages={messages}
