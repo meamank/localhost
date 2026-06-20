@@ -1,5 +1,5 @@
-import React from "react";
 import iconColors from "@/src/constants/IconColors";
+import React from "react";
 import { Alert, Image, Linking, Text, View } from "react-native";
 import type { MarkdownStyle } from "react-native-enriched-markdown";
 import { StreamdownText } from "react-native-streamdown";
@@ -10,12 +10,14 @@ interface MessageBubbleProps {
   message: Message;
   isStreaming: boolean;
   tokensPerSecond?: number;
+  isExtractingText?: boolean;
 }
 
 const MessageBubble = React.memo(function MessageBubble({
   message,
   isStreaming,
   tokensPerSecond,
+  isExtractingText,
 }: MessageBubbleProps) {
   const isUser = message.role === "user";
 
@@ -74,30 +76,46 @@ const MessageBubble = React.memo(function MessageBubble({
     ]);
   };
 
+  console.log("inbubble:", message);
+
   return (
     <View
       className={`flex-row ${isUser ? "justify-end" : "justify-start"} mb-4`}
     >
       <View
-        className={`${isUser ? "bg-background-tertiary max-w-[280] rounded-2xl px-4 py-3.5" : "bg-background-primary max-w-full"}`}
+        className={`${isUser ? "max-w-[280]" : "bg-background-primary max-w-full"}`}
       >
         {isUser ? (
-          <View className="flex-col gap-2">
-            {message.mediaPath && (
+          <View className="flex-col gap-2 items-end">
+            {message.media?.type === "image" && (
               <Image
-                source={{ uri: message.mediaPath }}
-                className="w-48 h-48 rounded-lg"
+                source={{ uri: message.media.uri }}
+                className="w-20 h-24 rounded-lg"
                 resizeMode="cover"
               />
             )}
+            {message.media?.type === "document" && (
+              <View className="w-20 h-24 bg-background-tertiary rounded-lg justify-center items-center">
+                <Text className="text-base text-foreground-secondary font-bold">
+                  PDF
+                </Text>
+              </View>
+            )}
             {!!message.content && (
-              <Text className="text-foreground-primary text-base">
-                {message.content}
-              </Text>
+              <View className="bg-background-tertiary px-4 py-3.5 rounded-2xl">
+                <Text className="text-foreground-primary text-base">
+                  {message.content}
+                </Text>
+              </View>
             )}
           </View>
         ) : (
           <>
+            {isExtractingText && (
+              <Text className="mt-2 text-xs font-medium text-foreground-primary">
+                ● Reading document..
+              </Text>
+            )}
             {isStreaming && (
               <Text className="mt-2 text-xs font-medium text-foreground-primary">
                 ● Streaming...

@@ -1,9 +1,9 @@
-import { useModel } from "../context/ModelContext";
-import { modelStore } from "../store/modelStore";
+import { modelStore } from "../store/modelStorage";
+import { useModelStore } from "../store/modelStore";
 import { LocalModel } from "../types";
 
 export function useModelSelection() {
-  const { setActiveModelId } = useModel();
+  const setActiveModelId = useModelStore((state) => state.setActiveModelId);
 
   async function selectModel(model: LocalModel) {
     try {

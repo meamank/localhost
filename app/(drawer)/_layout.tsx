@@ -59,10 +59,17 @@ export default function DrawerLayout() {
           ),
         }}
       />
-      <Drawer.Screen
+      {/* <Drawer.Screen
         name="[id]"
         options={{
           title: "Model Configuration",
+          drawerItemStyle: { display: "none" },
+        }}
+      /> */}
+      <Drawer.Screen
+        name="debug"
+        options={{
+          title: "SqlDB",
           drawerItemStyle: { display: "none" },
         }}
       />

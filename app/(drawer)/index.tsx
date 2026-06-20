@@ -3,11 +3,12 @@ import MessageList from "@/src/components/chat/MessageList";
 import { Icon } from "@/src/components/Icon";
 import { useColorScheme } from "@/src/components/useColorScheme";
 import iconColors from "@/src/constants/IconColors";
-import { useModel } from "@/src/context/ModelContext";
+
 import { useAttachment } from "@/src/hooks/useAttachment";
 import { useChat } from "@/src/hooks/useChat";
+import { useModelStore } from "@/src/store/modelStore";
 import { router, Stack } from "expo-router";
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { KeyboardStickyView } from "react-native-keyboard-controller";
 export default function Index() {
@@ -22,11 +23,14 @@ export default function Index() {
     generatedTokensCount,
     promptTokenCount,
     totalTokenCount,
+    isExtractingText,
   } = useChat();
   const { pickAttachment, attachment, removeAttachment } = useAttachment();
 
-  const { isInitializing, activeModelId, localModels, setIsModelReady } =
-    useModel();
+  const isInitializing = useModelStore((state) => state.isInitializing);
+  const activeModelId = useModelStore((state) => state.activeModelId);
+  const localModels = useModelStore((state) => state.localModels);
+  const setIsModelReady = useModelStore((state) => state.setIsModelReady);
 
   const colorScheme = useColorScheme();
 
@@ -45,7 +49,8 @@ export default function Index() {
       generationStartTimeRef.current = performance.now();
       setTokensPerSecond(0);
     } else if (generationStartTimeRef.current > 0) {
-      const elapsed = (performance.now() - generationStartTimeRef.current) / 1000;
+      const elapsed =
+        (performance.now() - generationStartTimeRef.current) / 1000;
       const tokens = generatedTokensCount();
       if (elapsed > 0 && tokens > 0) {
         setTokensPerSecond(Math.round(tokens / elapsed));
@@ -54,21 +59,24 @@ export default function Index() {
     }
   }, [isGenerating]);
 
-  const stackOptions = useMemo(() => ({
-    title: activeModelName,
-    headerRight: () => (
-      <Pressable
-        onPress={() => router.push(`/(drawer)/${activeModelId}`)}
-        style={{ paddingRight: 16 }}
-      >
-        <Icon
-          name="settings"
-          size={28}
-          color={iconColors[colorScheme].primary}
-        />
-      </Pressable>
-    ),
-  }), [activeModelName, activeModelId, colorScheme]);
+  const stackOptions = useMemo(
+    () => ({
+      title: activeModelName,
+      headerRight: () => (
+        <Pressable
+          onPress={() => router.push(`/(drawer)/${activeModelId}`)}
+          style={{ paddingRight: 16 }}
+        >
+          <Icon
+            name="settings"
+            size={28}
+            color={iconColors[colorScheme].primary}
+          />
+        </Pressable>
+      ),
+    }),
+    [activeModelName, activeModelId, colorScheme],
+  );
 
   if (isInitializing) {
     return (
@@ -87,6 +95,7 @@ export default function Index() {
         messages={messages}
         activeModelId={activeModelId}
         tokensPerSecond={tokensPerSecond}
+        isExtractingText={isExtractingText}
       />
 
       <KeyboardStickyView
@@ -104,6 +113,7 @@ export default function Index() {
             attachment={attachment || undefined}
             removeAttachment={removeAttachment}
             pickAttachment={pickAttachment}
+            isExtractingText={isExtractingText}
           />
         </View>
       </KeyboardStickyView>

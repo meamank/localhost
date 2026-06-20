@@ -82,3 +82,5 @@ task.md
 .gemini/rules/argent.md
 .mcp.json
 skills-lock.json
+src/constants/cleanPdf.ts
+test.js

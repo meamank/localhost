@@ -1,5 +1,6 @@
 import { useColorScheme } from "@/src/components/useColorScheme";
-import { ModelProvider } from "@/src/context/ModelContext";
+
+import { useModelStore } from "@/src/store/modelStore";
 import {
   Montserrat_400Regular,
   Montserrat_500Medium,
@@ -26,6 +27,7 @@ export {
 initExecutorch({
   resourceFetcher: ExpoResourceFetcher,
 });
+
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
@@ -38,11 +40,10 @@ function RootLayoutNav() {
         <ThemeProvider
           value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
         >
-          <ModelProvider>
-            <Stack>
-              <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
-            </Stack>
-          </ModelProvider>
+          <Stack>
+            <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
+          </Stack>
+
           <StatusBar style="auto" />
         </ThemeProvider>
       </KeyboardProvider>
@@ -52,6 +53,10 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  const isInitializing = useModelStore((state) => state.isInitializing);
+  const initializeStore = useModelStore((state) => state.initializeStore);
+  const setModelSizes = useModelStore((state) => state.setModelSizes);
+
   const [loaded, error] = useFonts({
     Montserrat_400Regular,
     Montserrat_500Medium,
@@ -61,18 +66,23 @@ export default function RootLayout() {
     Montserrat_900Black,
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
+  // initiate app boot
+  useEffect(() => {
+    initializeStore();
+  }, [initializeStore]);
+
   useEffect(() => {
     if (error) throw error;
   }, [error]);
 
   useEffect(() => {
-    if (loaded) {
+    if (loaded && !isInitializing) {
       SplashScreen.hideAsync();
+      setModelSizes();
     }
-  }, [loaded]);
+  }, [loaded, isInitializing]);
 
-  if (!loaded) {
+  if (!loaded || isInitializing) {
     return null;
   }
 

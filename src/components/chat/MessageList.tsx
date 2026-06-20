@@ -1,6 +1,6 @@
 import { Message } from "@/src/types";
 import { router } from "expo-router";
-import React, { useRef, useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
 import { KeyboardChatScrollView } from "react-native-keyboard-controller";
 
@@ -11,12 +11,14 @@ interface MessageListProps {
   messages: Message[];
   activeModelId: string | null;
   tokensPerSecond: number;
+  isExtractingText?: boolean;
 }
 
 export default function MessageList({
   messages,
   activeModelId,
   tokensPerSecond,
+  isExtractingText,
 }: MessageListProps) {
   const flatListRef = useRef<FlatList>(null);
 
@@ -63,12 +65,13 @@ export default function MessageList({
       <MessageBubble
         message={item}
         isStreaming={item.isStreaming || false}
+        isExtractingText={isExtractingText}
         tokensPerSecond={
           index === messages.length - 1 ? tokensPerSecond : undefined
         }
       />
     ),
-    [messages.length, tokensPerSecond]
+    [messages.length, tokensPerSecond],
   );
 
   return (

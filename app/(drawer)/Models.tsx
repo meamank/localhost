@@ -3,15 +3,14 @@ import ModelCard from "@/src/components/models/ModelCard";
 import { useColorScheme } from "@/src/components/useColorScheme";
 import iconColors from "@/src/constants/IconColors";
 import { AVAILABLE_MODELS } from "@/src/constants/models";
-import { useModel } from "@/src/context/ModelContext";
 import { useModelDownload } from "@/src/hooks/useModelDownload";
 import { useModelSelection } from "@/src/hooks/useModelSelection";
+import { useModelStore } from "@/src/store/modelStore";
 
 import { Stack } from "expo-router";
 import { FlatList, Pressable, View } from "react-native";
 
 export default function Models() {
-  const { localModels, activeModelId, isModelReady, modelSizes } = useModel();
   const {
     downloadModel,
     cancelDownloading,
@@ -20,6 +19,12 @@ export default function Models() {
     deleteDownloaded,
   } = useModelDownload();
   const { selectModel } = useModelSelection();
+
+  const localModels = useModelStore((state) => state.localModels);
+  const modelStates = useModelStore((state) => state.modelStates);
+  const activeModelId = useModelStore((state) => state.activeModelId);
+  const isModelReady = useModelStore((state) => state.isModelready);
+  const modelSizes = useModelStore((state) => state.modelSizes);
 
   const colorScheme = useColorScheme();
   return (
@@ -63,11 +68,15 @@ export default function Models() {
           const localState = localModels.find(
             (model) => model.id === catalogModel.id,
           );
+          
+          const ephemeralState = modelStates[catalogModel.id];
 
-          let status = localState?.status || "not downloaded";
+          let status = ephemeralState?.status || localState?.status || "not downloaded";
           if (activeModelId === catalogModel.id) {
             status = isModelReady ? "ready" : "initializing";
           }
+          
+          let progress = ephemeralState?.progress ?? localState?.downloadProgress ?? 0;
 
           return (
             <ModelCard
@@ -75,10 +84,13 @@ export default function Models() {
               dynamicSize={modelSizes[catalogModel.id]}
               modelStatus={status as any}
               isActive={activeModelId === catalogModel.id}
-              progress={localState?.downloadProgress || 0}
+              progress={progress}
               error={null}
               onDownload={() => downloadModel(catalogModel)}
-              onInit={() => localState && selectModel(localState)}
+              onInit={() => {
+                const latestLocalState = useModelStore.getState().localModels.find((m) => m.id === catalogModel.id);
+                if (latestLocalState) selectModel(latestLocalState);
+              }}
               onCancel={() => cancelDownloading(catalogModel)}
               onPause={() => pauseDownloading(catalogModel)}
               onResume={() => resumeDownloading(catalogModel)}

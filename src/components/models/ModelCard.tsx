@@ -24,7 +24,7 @@ interface ModelCardProps {
   onPause: () => void;
 }
 
-export default function ModelCard({
+function ModelCardComponent({
   model,
   dynamicSize,
   modelStatus,
@@ -125,7 +125,7 @@ export default function ModelCard({
       {/* Action Buttons */}
       <View className="flex-row justify-between items-center pt-2 border-t border-border">
         {/* BOTTOM_LEFT slot */}
-        {modelStatus === "not downloaded" && (
+        {(modelStatus === "not downloaded" || modelStatus === "error") && (
           <Pressable
             className="flex-row rounded-md bg-foreground-primary px-2 py-1 items-center gap-2"
             onPress={onDownload}
@@ -135,7 +135,9 @@ export default function ModelCard({
               size={24}
               color={iconColors[colorScheme].background}
             />
-            <Text className="text-background-primary">Download</Text>
+            <Text className="text-background-primary">
+              {modelStatus === "error" ? "Retry" : "Download"}
+            </Text>
           </Pressable>
         )}
 
@@ -202,3 +204,13 @@ export default function ModelCard({
     </View>
   );
 }
+
+import React, { memo } from 'react';
+export default memo(ModelCardComponent, (prev, next) => {
+  return prev.model.id === next.model.id &&
+         prev.dynamicSize === next.dynamicSize &&
+         prev.modelStatus === next.modelStatus &&
+         prev.isActive === next.isActive &&
+         prev.progress === next.progress &&
+         prev.error === next.error;
+});

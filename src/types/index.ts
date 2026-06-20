@@ -1,3 +1,5 @@
+import { Attachment } from "../hooks/useAttachment";
+
 export interface ModelMeta {
   id: string;
   org: string;
@@ -34,7 +36,7 @@ export type Message = {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
-  mediaPath?: string;
+  media?: Attachment;
   timestamp: number;
   tokenCount?: number;
   tokensPerSecond?: number;

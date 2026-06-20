@@ -1,7 +1,14 @@
 import iconColors from "@/src/constants/IconColors";
 import { Attachment } from "@/src/hooks/useAttachment";
-import { ActivityIndicator, Image, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Icon } from "../Icon";
+import { useColorScheme } from "../useColorScheme";
 
 interface Props {
   attachment: Attachment;
@@ -9,6 +16,7 @@ interface Props {
 }
 
 export default function AttachmentThumbnail({ attachment, onRemove }: Props) {
+  const colorScheme = useColorScheme();
   const renderContent = () => {
     if (attachment.status !== "ready") {
       return (
@@ -26,6 +34,14 @@ export default function AttachmentThumbnail({ attachment, onRemove }: Props) {
         />
       );
     }
+
+    return (
+      <View className="bg-foreground-primary w-10 h-12 px-2 py-1 rounded-sm justify-center items-center">
+        <Text className="text-xs text-foreground-secondary font-semibold">
+          PDF
+        </Text>
+      </View>
+    );
   };
 
   return (

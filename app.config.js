@@ -1,9 +1,28 @@
-const IS_DEV = process.env.APP_VARIANT === "development";
+const { withAppBuildGradle } = require("@expo/config-plugins");
+
+// 1. Create a custom config plugin
+const withDebugApplicationIdSuffix = (config) => {
+  return withAppBuildGradle(config, async (config) => {
+    const buildGradle = config.modResults.contents;
+
+    // 2. Safely inject the suffix into the debug block if it doesn't exist
+    if (!buildGradle.includes('applicationIdSuffix ".dev"')) {
+      config.modResults.contents = buildGradle.replace(
+        /debug\s*\{/,
+        'debug {\n            applicationIdSuffix ".dev"',
+      );
+    }
+
+    return config;
+  });
+};
+
+// const IS_DEV = process.env.APP_VARIANT === "development";
 
 export default ({ config }) => {
   return {
     ...config,
-    name: IS_DEV ? "LocalHost (Dev)" : config.name,
+    name: "LocalHost",
     slug: "localhost",
     version: "1.0.0",
     orientation: "portrait",
@@ -12,9 +31,7 @@ export default ({ config }) => {
     userInterfaceStyle: "automatic",
     ios: {
       supportsTablet: true,
-      bundleIdentifier: IS_DEV
-        ? "com.sherlock18.nirvah.dev"
-        : config.ios?.bundleIdentifier || "com.sherlock18.nirvah",
+      bundleIdentifier: "com.sherlock18.nirvah",
     },
     android: {
       adaptiveIcon: {
@@ -24,7 +41,7 @@ export default ({ config }) => {
         monochromeImage: "./src/assets/images/android-icon-monochrome.png",
       },
       predictiveBackGestureEnabled: false,
-      package: IS_DEV ? "com.sherlock18.nirvah.dev" : config.android?.package,
+      package: "com.sherlock18.nirvah",
     },
     web: {
       bundler: "metro",
@@ -54,6 +71,7 @@ export default ({ config }) => {
       "expo-sqlite",
       "expo-asset",
       "expo-build-properties",
+      withDebugApplicationIdSuffix,
     ],
     experiments: {
       typedRoutes: true,
