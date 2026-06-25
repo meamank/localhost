@@ -2,13 +2,14 @@ import { Icon } from "@/src/components/Icon";
 import ModelCard from "@/src/components/models/ModelCard";
 import { useColorScheme } from "@/src/components/useColorScheme";
 import iconColors from "@/src/constants/IconColors";
+import m3 from "@/src/constants/m3";
 import { AVAILABLE_MODELS } from "@/src/constants/models";
 import { useModelDownload } from "@/src/hooks/useModelDownload";
 import { useModelSelection } from "@/src/hooks/useModelSelection";
 import { useModelStore } from "@/src/store/modelStore";
 
-import { Stack } from "expo-router";
-import { FlatList, Pressable, View } from "react-native";
+import { Tabs } from "expo-router";
+import { FlatList, Pressable, Text, View } from "react-native";
 
 export default function Models() {
   const {
@@ -29,9 +30,20 @@ export default function Models() {
   const colorScheme = useColorScheme();
   return (
     <View className="flex-1 bg-background-primary p-4">
-      <Stack.Screen
+      <Tabs.Screen
         options={{
           title: "Available Models",
+          headerTitle: () => (
+            <Text
+              style={{
+                fontFamily: "GoogleSansFlexRound_700Bold",
+                fontSize: 20,
+                color: m3[colorScheme].onSurface,
+              }}
+            >
+              Available Models
+            </Text>
+          ),
           headerRight: () => (
             <Pressable
               onPress={() => console.log("Icon pressed!")}
@@ -68,15 +80,17 @@ export default function Models() {
           const localState = localModels.find(
             (model) => model.id === catalogModel.id,
           );
-          
+
           const ephemeralState = modelStates[catalogModel.id];
 
-          let status = ephemeralState?.status || localState?.status || "not downloaded";
+          let status =
+            ephemeralState?.status || localState?.status || "not downloaded";
           if (activeModelId === catalogModel.id) {
             status = isModelReady ? "ready" : "initializing";
           }
-          
-          let progress = ephemeralState?.progress ?? localState?.downloadProgress ?? 0;
+
+          let progress =
+            ephemeralState?.progress ?? localState?.downloadProgress ?? 0;
 
           return (
             <ModelCard
@@ -88,7 +102,9 @@ export default function Models() {
               error={null}
               onDownload={() => downloadModel(catalogModel)}
               onInit={() => {
-                const latestLocalState = useModelStore.getState().localModels.find((m) => m.id === catalogModel.id);
+                const latestLocalState = useModelStore
+                  .getState()
+                  .localModels.find((m) => m.id === catalogModel.id);
                 if (latestLocalState) selectModel(latestLocalState);
               }}
               onCancel={() => cancelDownloading(catalogModel)}

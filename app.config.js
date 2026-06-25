@@ -1,24 +1,3 @@
-const { withAppBuildGradle } = require("@expo/config-plugins");
-
-// 1. Create a custom config plugin
-const withDebugApplicationIdSuffix = (config) => {
-  return withAppBuildGradle(config, async (config) => {
-    const buildGradle = config.modResults.contents;
-
-    // 2. Safely inject the suffix into the debug block if it doesn't exist
-    if (!buildGradle.includes('applicationIdSuffix ".dev"')) {
-      config.modResults.contents = buildGradle.replace(
-        /debug\s*\{/,
-        'debug {\n            applicationIdSuffix ".dev"',
-      );
-    }
-
-    return config;
-  });
-};
-
-// const IS_DEV = process.env.APP_VARIANT === "development";
-
 export default ({ config }) => {
   return {
     ...config,
@@ -71,7 +50,6 @@ export default ({ config }) => {
       "expo-sqlite",
       "expo-asset",
       "expo-build-properties",
-      withDebugApplicationIdSuffix,
     ],
     experiments: {
       typedRoutes: true,

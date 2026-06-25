@@ -1,54 +1,430 @@
 @import "tailwindcss";
 @import "uniwind";
 
+/* ═══════════════════════════════════════════════════════════════
+   NIRVAH — Material 3 Expressive Design System
+   ═══════════════════════════════════════════════════════════════
+   Font Families:
+     - Montserrat        → Expressive display / hero text
+     - Google Sans Flex  → Base UI text (body, labels, titles)
+
+   Color Palettes:
+     - Sage Green        → Primary theme (bg, surface, primary)
+     - Orange            → Accent cards (e.g. food, dining)
+     - Blue              → Accent cards (e.g. bills, utilities)
+     - Purple            → Accent cards (e.g. entertainment)
+
+   Typography class usage examples:
+     text-exp-display-lg   → 60px Montserrat bold hero text
+     text-headline-md      → 28px semibold section headers
+     text-body-md          → 14px regular body text
+     text-label-sm         → 11px medium label/caption text
+
+   Color class usage examples:
+     bg-background         → Page background
+     bg-surface            → Card / sheet surface
+     bg-primary            → Primary action button
+     text-on-primary       → Text on primary surfaces
+     bg-primary-container  → Chip / pill backgrounds
+     bg-accent-orange      → Orange category card
+     text-accent-orange-on → Text on orange card
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────
+   STATIC DESIGN TOKENS (available in all modes)
+   ───────────────────────────────────────────── */
+@theme {
+  /* ── SHAPES (M3 Border Radius) ─────────────────────────────
+     Usage: rounded-sm | rounded-md | rounded-lg | rounded-xl | rounded-full
+     ─────────────────────────────────────────────────────────── */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 28px;
+  --radius-2xl: 32px;
+  --radius-full: 9999px;
+
+  /* ── FONT FAMILIES ─────────────────────────────────────────
+     Usage: font-display | font-sans
+     Expo registers fonts with the exact import name from useFonts.
+     The weight is baked into each registered name; Tailwind's
+     font-weight utilities (font-normal … font-black) must match
+     the loaded variant.
+     ─────────────────────────────────────────────────────────── */
+  --font-display: "Montserrat_600SemiBold";
+  --font-sans: "GoogleSansFlexRound_400Regular";
+}
+
+@layer utilities {
+  /* Google Sans Flex (Default Sans) */
+  .font-light { font-family: "GoogleSansFlexRound_300Light"; font-weight: normal; }
+  .font-normal { font-family: "GoogleSansFlexRound_400Regular"; font-weight: normal; }
+  .font-medium { font-family: "GoogleSansFlexRound_500Medium"; font-weight: normal; }
+  .font-semibold { font-family: "GoogleSansFlexRound_600SemiBold"; font-weight: normal; }
+  .font-bold { font-family: "GoogleSansFlexRound_700Bold"; font-weight: normal; }
+  .font-extrabold { font-family: "GoogleSansFlexRound_800ExtraBold"; font-weight: normal; }
+
+  /* Montserrat (Display) */
+  .font-display.font-normal { font-family: "Montserrat_400Regular"; font-weight: normal; }
+  .font-display.font-medium { font-family: "Montserrat_500Medium"; font-weight: normal; }
+  .font-display.font-semibold { font-family: "Montserrat_600SemiBold"; font-weight: normal; }
+  .font-display.font-bold { font-family: "Montserrat_700Bold"; font-weight: normal; }
+  .font-display.font-extrabold { font-family: "Montserrat_800ExtraBold"; font-weight: normal; }
+  .font-display.font-black { font-family: "Montserrat_900Black"; font-weight: normal; }
+}
+
+@theme {
+  /* ── EXPRESSIVE TYPOGRAPHY (Montserrat) ────────────────────
+     For hero text, large monetary totals, greeting headings.
+     Use with `font-display`.
+
+     Class        │ Size │ Weight    │ Use-case
+     ─────────────┼──────┼───────────┼──────────────────────────
+     exp-display-lg │ 60px │ semibold  │ Hero total / splash
+     exp-display-md │ 50px │ regular   │ Secondary hero
+     exp-display-sm │ 40px │ regular   │ Tertiary hero
+     exp-title-lg   │ 36px │ bold      │ Large section header
+     exp-title-md   │ 32px │ bold      │ Section title / greeting
+     exp-title-sm   │ 24px │ semibold  │ Card title emphasis
+     ─────────────────────────────────────────────────────────── */
+  --text-exp-display-lg: 60px;
+  --text-exp-display-lg--line-height: 64px;
+  --text-exp-display-lg--letter-spacing: -1.2px;
+  --text-exp-display-lg--font-weight: 600;
+
+  --text-exp-display-md: 50px;
+  --text-exp-display-md--line-height: 54px;
+  --text-exp-display-md--letter-spacing: -1px;
+  --text-exp-display-md--font-weight: 400;
+
+  --text-exp-display-sm: 40px;
+  --text-exp-display-sm--line-height: 44px;
+  --text-exp-display-sm--letter-spacing: -0.8px;
+  --text-exp-display-sm--font-weight: 400;
+
+  --text-exp-title-lg: 36px;
+  --text-exp-title-lg--line-height: 40px;
+  --text-exp-title-lg--letter-spacing: -0.72px;
+  --text-exp-title-lg--font-weight: 700;
+
+  --text-exp-title-md: 32px;
+  --text-exp-title-md--line-height: 36px;
+  --text-exp-title-md--letter-spacing: -0.64px;
+  --text-exp-title-md--font-weight: 700;
+
+  --text-exp-title-sm: 24px;
+  --text-exp-title-sm--line-height: 28px;
+  --text-exp-title-sm--letter-spacing: -0.48px;
+  --text-exp-title-sm--font-weight: 600;
+
+  /* ── BASE TYPOGRAPHY (Google Sans Flex) ────────────────────
+     For all functional UI text. Use with `font-sans` (default).
+
+     Class        │ Size │ Weight    │ Use-case
+     ─────────────┼──────┼───────────┼──────────────────────────
+     display-lg   │ 48px │ bold      │ Large numeric display
+     display-md   │ 36px │ bold      │ Medium numeric display
+     display-sm   │ 30px │ regular   │ Small display
+     headline-lg  │ 32px │ semibold  │ Page header
+     headline-md  │ 28px │ semibold  │ Section header
+     headline-sm  │ 24px │ semibold  │ Sub-section header
+     title-lg     │ 22px │ regular   │ Card title
+     title-md     │ 18px │ medium    │ List item title
+     title-sm     │ 14px │ medium    │ Small title / tab label
+     body-lg      │ 16px │ regular   │ Primary body text
+     body-md      │ 14px │ regular   │ Secondary body text
+     body-sm      │ 12px │ regular   │ Caption / tertiary text
+     label-lg     │ 16px │ medium    │ Button label
+     label-md     │ 14px │ medium    │ Chip / tag label
+     label-sm     │ 11px │ medium    │ Overline / timestamp
+     ─────────────────────────────────────────────────────────── */
+  --text-display-lg: 48px;
+  --text-display-lg--line-height: 56px;
+  --text-display-lg--letter-spacing: 0px;
+  --text-display-lg--font-weight: 700;
+
+  --text-display-md: 36px;
+  --text-display-md--line-height: 44px;
+  --text-display-md--letter-spacing: 0px;
+  --text-display-md--font-weight: 700;
+
+  --text-display-sm: 30px;
+  --text-display-sm--line-height: 38px;
+  --text-display-sm--letter-spacing: 0px;
+  --text-display-sm--font-weight: 400;
+
+  --text-headline-lg: 32px;
+  --text-headline-lg--line-height: 40px;
+  --text-headline-lg--letter-spacing: 0px;
+  --text-headline-lg--font-weight: 600;
+
+  --text-headline-md: 28px;
+  --text-headline-md--line-height: 36px;
+  --text-headline-md--letter-spacing: 0px;
+  --text-headline-md--font-weight: 600;
+
+  --text-headline-sm: 24px;
+  --text-headline-sm--line-height: 32px;
+  --text-headline-sm--letter-spacing: 0px;
+  --text-headline-sm--font-weight: 600;
+
+  --text-title-lg: 22px;
+  --text-title-lg--line-height: 28px;
+  --text-title-lg--letter-spacing: 0px;
+  --text-title-lg--font-weight: 400;
+
+  --text-title-md: 18px;
+  --text-title-md--line-height: 24px;
+  --text-title-md--letter-spacing: 0.15px;
+  --text-title-md--font-weight: 500;
+
+  --text-title-sm: 14px;
+  --text-title-sm--line-height: 20px;
+  --text-title-sm--letter-spacing: 0.1px;
+  --text-title-sm--font-weight: 500;
+
+  --text-body-lg: 16px;
+  --text-body-lg--line-height: 24px;
+  --text-body-lg--letter-spacing: 0.5px;
+  --text-body-lg--font-weight: 400;
+
+  --text-body-md: 14px;
+  --text-body-md--line-height: 20px;
+  --text-body-md--letter-spacing: 0.25px;
+  --text-body-md--font-weight: 400;
+
+  --text-body-sm: 12px;
+  --text-body-sm--line-height: 16px;
+  --text-body-sm--letter-spacing: 0.4px;
+  --text-body-sm--font-weight: 400;
+
+  --text-label-lg: 16px;
+  --text-label-lg--line-height: 20px;
+  --text-label-lg--letter-spacing: 0.1px;
+  --text-label-lg--font-weight: 500;
+
+  --text-label-md: 14px;
+  --text-label-md--line-height: 16px;
+  --text-label-md--letter-spacing: 0.5px;
+  --text-label-md--font-weight: 500;
+
+  --text-label-sm: 11px;
+  --text-label-sm--line-height: 16px;
+  --text-label-sm--letter-spacing: 0.5px;
+  --text-label-sm--font-weight: 500;
+
+  /* ── ACCENT PALETTE: ORANGE (Warm) ─────────────────────────
+     For warm-toned category cards (food, dining, groceries).
+     Usage: bg-accent-orange, text-accent-orange-on, etc.
+     ─────────────────────────────────────────────────────────── */
+  --color-accent-orange: oklch(91.61% 0.0491 52.09);
+  --color-accent-orange-on: oklch(22.89% 0.0564 55.37);
+  --color-accent-orange-bold: oklch(49.54% 0.1047 53.48);
+  --color-accent-orange-surface: oklch(97.51% 0.0068 67.74);
+  --color-accent-orange-container: oklch(83.42% 0.1016 357.42);
+  --color-accent-orange-outline: oklch(57.00% 0.0257 45.42);
+
+  /* ── ACCENT PALETTE: BLUE (Cool) ───────────────────────────
+     For cool-toned category cards (bills, utilities, transfers).
+     Usage: bg-accent-blue, text-accent-blue-on, etc.
+     ─────────────────────────────────────────────────────────── */
+  --color-accent-blue: oklch(90.36% 0.0480 252.21);
+  --color-accent-blue-on: oklch(22.66% 0.0632 249.41);
+  --color-accent-blue-bold: oklch(45.31% 0.1065 251.72);
+  --color-accent-blue-surface: oklch(97.40% 0.0059 239.82);
+  --color-accent-blue-container: oklch(88.91% 0.0432 246.16);
+  --color-accent-blue-outline: oklch(56.75% 0.0091 253.90);
+
+  /* ── ACCENT PALETTE: PURPLE (Vibrant) ──────────────────────
+     For vibrant category cards (entertainment, subscriptions).
+     Usage: bg-accent-purple, text-accent-purple-on, etc.
+     ─────────────────────────────────────────────────────────── */
+  --color-accent-purple: oklch(92.07% 0.0503 345.84);
+  --color-accent-purple-on: oklch(24.19% 0.0821 339.41);
+  --color-accent-purple-bold: oklch(51.40% 0.1629 292.05);
+  --color-accent-purple-surface: oklch(97.91% 0.0069 304.24);
+  --color-accent-purple-container: oklch(92.77% 0.0328 297.19);
+  --color-accent-purple-outline: oklch(57.02% 0.0162 308.14);
+
+  /* ── ACCENT PALETTE: ROSE (Soft) ───────────────────────────
+     For soft category cards (health, personal care).
+     Usage: bg-accent-rose, text-accent-rose-on, etc.
+     ─────────────────────────────────────────────────────────── */
+  --color-accent-rose: oklch(93.36% 0.0348 6.76);
+  --color-accent-rose-on: oklch(23.55% 0.0784 14.72);
+  --color-accent-rose-bold: oklch(49.81% 0.1229 359.04);
+  --color-accent-rose-surface: oklch(98.45% 0.0075 17.28);
+  --color-accent-rose-container: oklch(91.85% 0.0428 9.00);
+  --color-accent-rose-outline: oklch(57.23% 0.0216 5.76);
+
+  /* ── SHARED / STATIC COLORS ────────────────────────────────
+     Always available regardless of theme mode.
+     ─────────────────────────────────────────────────────────── */
+  --color-white: oklch(100.00% 0.0000 0.00);
+  --color-black: oklch(0.00% 0.0000 0.00);
+  --color-transparent: transparent;
+}
+
+/* ─────────────────────────────────────────────
+   SEMANTIC THEME COLORS (light / dark adaptive)
+   ─────────────────────────────────────────────
+   These map the Sage Green palette to semantic
+   roles. Every component should use these names,
+   not raw palette hex values.
+
+   Usage examples:
+     bg-background        → page background
+     bg-surface           → card / sheet surface
+     bg-surface-variant   → muted surface
+     bg-primary           → primary button / FAB
+     bg-primary-container → chip / pill / badge bg
+     bg-secondary         → secondary action
+     bg-secondary-container → secondary card bg
+     text-on-background   → text on page bg
+     text-on-surface      → text on cards
+     text-on-surface-variant → muted text on cards
+     text-on-primary      → text on primary buttons
+     text-on-primary-container → text on chips
+     border-outline       → card / divider borders
+     text-primary         → primary-colored text
+     text-secondary       → secondary text
+     text-muted           → de-emphasized text
+   ───────────────────────────────────────────── */
+
 @layer theme {
   :root {
     @variant light {
-      /* Backgrounds */
-      --color-background-primary: #ffffff;
-      --color-background-secondary: #e8e8e8;
-      --color-background-tertiary: #f3f3f3;
-      --color-card: #ffffff;
+      /* ── Surfaces ── */
+      --color-background: oklch(97.87% 0.0091 161.36);
+      --color-surface: oklch(98.68% 0.0059 170.45);
+      --color-surface-dim: oklch(95.85% 0.0083 157.09);
+      --color-surface-bright: oklch(99.14% 0.0057 128.52);
+      --color-surface-variant: oklch(91.31% 0.0134 152.59);
+      --color-surface-container: oklch(94.77% 0.0108 158.84);
+      --color-surface-container-low: oklch(96.35% 0.0099 155.10);
+      --color-surface-container-high: oklch(93.16% 0.0125 156.99);
+      --color-card: oklch(100.00% 0.0000 0.00);
 
-      /* Text/Icon colors */
-      --color-foreground-primary: #0d0d00;
-      --color-foreground-secondary: #5d5d5d;
-      --color-foreground-tertiary: #8f8f8f;
-      --color-muted: #8f8f8f;
+      /* ── Primary (Sage Green) ── */
+      --color-primary: oklch(47.69% 0.0873 164.70);
+      --color-on-primary: oklch(100.00% 0.0000 0.00);
+      --color-primary-container: oklch(92.26% 0.0567 163.42);
+      --color-on-primary-container: oklch(21.92% 0.0472 163.20);
 
-      /* Borders */
-      --color-border: #e5e7eb;
-      --color-border-subtle: #f3f4f6;
+      /* ── Secondary ── */
+      --color-secondary: oklch(47.71% 0.0337 162.07);
+      --color-on-secondary: oklch(100.00% 0.0000 0.00);
+      --color-secondary-container: oklch(91.04% 0.0342 163.19);
+      --color-on-secondary-container: oklch(22.13% 0.0354 162.74);
 
-      /* Interactive elements */
-      --color-primary: #0285ff;
-      --color-danger: #e02e2a;
-      --color-success: #008635;
-      --color-warning: #e25507;
+      /* ── Tertiary ── */
+      --color-tertiary: oklch(47.31% 0.0508 165.88);
+      --color-on-tertiary: oklch(100.00% 0.0000 0.00);
+      --color-tertiary-container: oklch(90.45% 0.0521 163.53);
+      --color-on-tertiary-container: oklch(21.95% 0.0462 165.00);
+
+      /* ── Text / Foreground ── */
+      --color-on-background: oklch(22.54% 0.0083 153.24);
+      --color-on-surface: oklch(22.54% 0.0083 153.24);
+      --color-on-surface-variant: oklch(39.55% 0.0143 161.43);
+      --color-foreground-primary: oklch(22.54% 0.0083 153.24);
+      --color-foreground-secondary: oklch(39.55% 0.0143 161.43);
+      --color-foreground-tertiary: oklch(56.66% 0.0141 156.75);
+      --color-muted: oklch(56.66% 0.0141 156.75);
+
+      /* ── Outline / Borders ── */
+      --color-outline: oklch(56.66% 0.0141 156.75);
+      --color-outline-variant: oklch(82.61% 0.0146 155.53);
+      --color-border: oklch(82.61% 0.0146 155.53);
+      --color-border-subtle: oklch(91.31% 0.0134 152.59);
+
+      /* ── Status ── */
+      --color-error: oklch(50.60% 0.1927 27.70);
+      --color-on-error: oklch(100.00% 0.0000 0.00);
+      --color-error-container: oklch(91.83% 0.0418 25.23);
+      --color-success: oklch(47.69% 0.0873 164.70);
+      --color-warning: oklch(49.54% 0.1047 53.48);
+      --color-danger: oklch(50.60% 0.1927 27.70);
+
+      /* ── Interactive ── */
+      --color-scrim: oklch(0.00% 0.0000 0.00 / 0.32);
+      --color-shadow: oklch(0.00% 0.0000 0.00 / 0.15);
+      --color-inverse-surface: oklch(30.91% 0.0067 145.41);
+      --color-inverse-on-surface: oklch(95.55% 0.0057 128.53);
+      --color-inverse-primary: oklch(81.51% 0.1185 166.05);
+
+      /* ── Legacy compat (existing components) ── */
+      --color-background-primary: oklch(97.87% 0.0091 161.36);
+      --color-background-secondary: oklch(94.77% 0.0108 158.84);
+      --color-background-tertiary: oklch(91.31% 0.0134 152.59);
     }
 
-    @variant dark {
-      /* Backgrounds */
-      --color-background-primary: #212121;
-      --color-background-secondary: #303030;
-      --color-background-tertiary: #414141;
-      --color-card: #1f2937;
+    /* Temporarily disabled while experimenting with light mode */
+  }
+  @variant dark {
+    /* ── Surfaces ── */
+    --color-background: oklch(17.60% 0.0088 169.10);
+    --color-surface: oklch(21.48% 0.0107 163.76);
+    --color-surface-dim: oklch(17.60% 0.0088 169.10);
+    --color-surface-bright: oklch(30.90% 0.0120 160.62);
+    --color-surface-variant: oklch(39.55% 0.0143 161.43);
+    --color-surface-container: oklch(24.90% 0.0104 164.00);
+    --color-surface-container-low: oklch(22.54% 0.0083 153.24);
+    --color-surface-container-high: oklch(29.02% 0.0100 164.21);
+    --color-card: oklch(24.90% 0.0104 164.00);
 
-      /* Text/Icon colors */
-      --color-foreground-primary: #ffffff;
-      --color-foreground-secondary: #cdcdcd;
-      --color-foreground-tertiary: #afafaf;
-      --color-muted: #afafaf;
+    /* ── Primary (Sage Green) ── */
+    --color-primary: oklch(81.51% 0.1185 166.05);
+    --color-on-primary: oklch(30.12% 0.0656 162.45);
+    --color-primary-container: oklch(38.76% 0.0850 161.98);
+    --color-on-primary-container: oklch(92.26% 0.0567 163.42);
 
-      /* Borders */
-      --color-border: #374151;
-      --color-border-subtle: #1f2937;
+    /* ── Secondary ── */
+    --color-secondary: oklch(62.92% 0.0877 167.30);
+    --color-on-secondary: oklch(30.96% 0.0364 160.51);
+    --color-secondary-container: oklch(39.35% 0.0350 161.49);
+    --color-on-secondary-container: oklch(91.04% 0.0342 163.19);
 
-      /* Interactive elements */
-      --color-primary: #0285ff;
-      --color-danger: #ff8583;
-      --color-success: #40c977;
-      --color-warning: #ff9e6c;
-    }
+    /* ── Tertiary ── */
+    --color-tertiary: oklch(78.04% 0.0739 165.23);
+    --color-on-tertiary: oklch(30.12% 0.0656 162.45);
+    --color-tertiary-container: oklch(38.25% 0.0588 166.43);
+    --color-on-tertiary-container: oklch(90.45% 0.0521 163.53);
+
+    /* ── Text / Foreground ── */
+    --color-on-background: oklch(91.32% 0.0058 128.53);
+    --color-on-surface: oklch(91.32% 0.0058 128.53);
+    --color-on-surface-variant: oklch(82.61% 0.0146 155.53);
+    --color-foreground-primary: oklch(91.32% 0.0058 128.53);
+    --color-foreground-secondary: oklch(82.61% 0.0146 155.53);
+    --color-foreground-tertiary: oklch(65.38% 0.0146 152.46);
+    --color-muted: oklch(65.38% 0.0146 152.46);
+
+    /* ── Outline / Borders ── */
+    --color-outline: oklch(65.38% 0.0146 152.46);
+    --color-outline-variant: oklch(39.55% 0.0143 161.43);
+    --color-border: oklch(39.55% 0.0143 161.43);
+    --color-border-subtle: oklch(30.90% 0.0120 160.62);
+
+    /* ── Status ── */
+    --color-error: oklch(83.83% 0.0891 26.76);
+    --color-on-error: oklch(32.75% 0.1336 27.32);
+    --color-error-container: oklch(41.71% 0.1702 27.38);
+    --color-success: oklch(81.51% 0.1185 166.05);
+    --color-warning: oklch(79.50% 0.1141 54.85);
+    --color-danger: oklch(83.83% 0.0891 26.76);
+
+    /* ── Interactive ── */
+    --color-scrim: oklch(0.00% 0.0000 0.00 / 0.6);
+    --color-shadow: oklch(0.00% 0.0000 0.00 / 0.3);
+    --color-inverse-surface: oklch(91.32% 0.0058 128.53);
+    --color-inverse-on-surface: oklch(30.91% 0.0067 145.41);
+    --color-inverse-primary: oklch(47.69% 0.0873 164.70);
+
+    /* ── Legacy compat (existing components) ── */
+    --color-background-primary: oklch(17.60% 0.0088 169.10);
+    --color-background-secondary: oklch(24.90% 0.0104 164.00);
+    --color-background-tertiary: oklch(29.02% 0.0100 164.21);
   }
 }

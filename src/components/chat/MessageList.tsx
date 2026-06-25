@@ -50,7 +50,7 @@ export default function MessageList({
         </Text>
         <Pressable
           className="bg-primary px-4 py-3 rounded-full"
-          onPress={() => router.push("/(drawer)/Models")}
+          onPress={() => router.push("/(tabs)/Models")}
         >
           <Text className="text-foreground-primary text-sm">
             Choose Your Model

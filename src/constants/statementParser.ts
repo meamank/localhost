@@ -14,9 +14,13 @@ export interface StatementParseResult {
   bank: string;
   transactions: ParsedTransaction[];
   unparsedLines: string[];
+  dueDate?: string;
+  billingPeriod?: string;
+  totalDue?: number;
+  calculatedTotal?: number;
 }
 
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
+export const CATEGORY_KEYWORDS: Record<string, string[]> = {
   food: [
     "swiggy",
     "zomato",
@@ -81,18 +85,24 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "medplus",
     "1mg",
     "pharmeasy",
+    "medical",
+    "drug",
+    "medicine",
+    "clinic",
   ],
   education: ["udemy", "coursera", "school", "college", "tuition"],
 };
 
 function autoCategorize(description: string): string {
   for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (keywords.some((kw) => {
-      // Escape special regex characters and use word boundaries
-      const escapedKw = kw.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-      const regex = new RegExp(`\\b${escapedKw}\\b`, 'i');
-      return regex.test(description);
-    })) {
+    if (
+      keywords.some((kw) => {
+        // Escape special regex characters and use word boundaries
+        const escapedKw = kw.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+        const regex = new RegExp(`\\b${escapedKw}\\b`, "i");
+        return regex.test(description);
+      })
+    ) {
       return category;
     }
   }
@@ -100,8 +110,8 @@ function autoCategorize(description: string): string {
 }
 
 export function parseStatement(rawPdfText: string): StatementParseResult {
-  // Extract Last 4 Digits of CC (Matches: XXXXXX6150)
-  const ccMatch = rawPdfText.match(/XXXXXX(\d{4})/);
+  // Extract Last 4 Digits of CC (Matches: XXXXXX6150 or XXXXXXXX4522)
+  const ccMatch = rawPdfText.match(/X{4,}(\d{4})/);
   const cardLast4 = ccMatch ? ccMatch[1] : "Unknown";
 
   // Bank detection
@@ -109,12 +119,13 @@ export function parseStatement(rawPdfText: string): StatementParseResult {
   if (/hdfc/i.test(rawPdfText)) bank = "HDFC";
   else if (/icici/i.test(rawPdfText)) bank = "ICICI";
   else if (/sbi|state bank/i.test(rawPdfText)) bank = "SBI";
+  else if (/yes\s*bank/i.test(rawPdfText)) bank = "YES BANK";
 
   const transactions: ParsedTransaction[] = [];
 
-  // Catch both debits and credits from HDFC format
+  // Catch both debits and credits from HDFC and YES BANK formats
   const txRegex =
-    /(\d{2}\/\d{2}\/\d{4})\|\s*\d{2}:\d{2}\s+(.*?)\s+(?:(?:Cr|Dr|C|D|\+|-)\s*)?([\d,]+\.\d{2})(?:\s*(Cr|Dr|C|D))?/gi;
+    /(\d{2}[\/\-]\d{2}[\/\-]\d{4})[|\s]+(?:\d{2}:\d{2}\s+)?(.*?)\s+(?:(?:Cr|Dr|C|D|\+|-)\s*)?([\d,]+\.\d{2})(?:\s*(Cr|Dr|C|D))?/gi;
 
   let match;
   while ((match = txRegex.exec(rawPdfText)) !== null) {
@@ -123,8 +134,9 @@ export function parseStatement(rawPdfText: string): StatementParseResult {
     const rawAmount = match[3]; // "245.00"
     const suffix = match[4]; // "Cr" etc.
 
-    // Parse Date DD/MM/YYYY to YYYY-MM-DD
-    const [dd, mm, yyyy] = rawDate.split("/");
+    // Parse Date DD/MM/YYYY or DD-MM-YYYY to YYYY-MM-DD
+    const separator = rawDate.includes("-") ? "-" : "/";
+    const [dd, mm, yyyy] = rawDate.split(separator);
     const date = `${yyyy}-${mm}-${dd}`;
 
     // Clean Amount
@@ -159,10 +171,97 @@ export function parseStatement(rawPdfText: string): StatementParseResult {
     });
   }
 
+  const parseDateStr = (dateStr: string) => {
+    // Matches DD/MM/YYYY or DD-MM-YYYY
+    if (/^\d{2}[\/\-]\d{2}[\/\-]\d{4}$/.test(dateStr)) {
+      const sep = dateStr.includes("-") ? "-" : "/";
+      const [d, m, y] = dateStr.split(sep);
+      return `${y}-${m}-${d}`;
+    }
+    // Matches DD MMM, YYYY
+    const match = dateStr.match(/(\d{2})\s+([A-Za-z]{3}),?\s+(\d{4})/);
+    if (match) {
+      const months: Record<string, string> = {
+        jan: "01",
+        feb: "02",
+        mar: "03",
+        apr: "04",
+        may: "05",
+        jun: "06",
+        jul: "07",
+        aug: "08",
+        sep: "09",
+        oct: "10",
+        nov: "11",
+        dec: "12",
+      };
+      const [_, d, mStr, y] = match;
+      const m = months[mStr.toLowerCase()] || "01";
+      return `${y}-${m}-${d}`;
+    }
+    return dateStr;
+  };
+
+  const dateRegex =
+    /(\d{2}[\/\-]\d{2}[\/\-]\d{4}|\d{2}\s+[A-Za-z]{3},?\s+\d{4})/;
+
+  const dueDateMatch = rawPdfText.match(
+    new RegExp(
+      `(?:Payment\\s*)?Due\\s*Date[\\s\\S]{0,150}?${dateRegex.source}`,
+      "i",
+    ),
+  );
+  const dueDateRaw = dueDateMatch ? dueDateMatch[1] : undefined;
+  let dueDate = undefined;
+  if (dueDateRaw) {
+    dueDate = parseDateStr(dueDateRaw);
+  }
+
+  const equationMatch = rawPdfText.match(
+    /=\s*(?:[A-Za-z\u20B9]?\s*)?([\d,]+\.\d{2})/,
+  );
+  let totalDue = undefined;
+  if (equationMatch) {
+    totalDue = parseFloat(equationMatch[1].replace(/,/g, ""));
+  } else {
+    const totalDueMatch = rawPdfText.match(
+      /Total\s*(?:Amount\s*)?Due[s]?[\s\S]{0,150}?[^0-9]?([\d,]+\.\d{2})/i,
+    );
+    if (totalDueMatch) {
+      totalDue = parseFloat(totalDueMatch[1].replace(/,/g, ""));
+    }
+  }
+
+  const periodMatch = rawPdfText.match(
+    new RegExp(
+      `(?:Statement|Billing)\\s*(?:Period|Date)[\\s\\S]{0,150}?${dateRegex.source}[\\s\\S]{1,30}?${dateRegex.source}`,
+      "i",
+    ),
+  );
+  let billingPeriod = undefined;
+  if (periodMatch) {
+    billingPeriod = `${parseDateStr(periodMatch[1])} to ${parseDateStr(periodMatch[2])}`;
+  }
+
+  const calculatedTotal = transactions.reduce((sum, t) => {
+    // Skip payments towards the credit card bill itself
+    if (
+      t.type === "credit" &&
+      /payment/i.test(t.rawDescription || t.merchant || "")
+    ) {
+      return sum;
+    }
+    return sum + (t.type === "debit" ? t.amount : -t.amount);
+  }, 0);
+
   return {
     cardLast4,
     bank,
     transactions,
     unparsedLines: [],
+    dueDate,
+    billingPeriod,
+    totalDue,
+    calculatedTotal: parseFloat(calculatedTotal.toFixed(2)),
   };
 }

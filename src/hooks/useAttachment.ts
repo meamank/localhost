@@ -34,7 +34,7 @@ export const useAttachment = () => {
 
   const pickAttachment = async () => {
     const fileResult = await DocumentPicker.getDocumentAsync({
-      type: ["application/pdf", "text/plain", "text/markdown", "image/*"],
+      type: ["application/pdf"],
       copyToCacheDirectory: true,
     });
 
@@ -52,24 +52,28 @@ export const useAttachment = () => {
       const attachmentId = `doc-${Date.now()}`;
 
       if (fileResult.assets) {
-        setAttachment({
+        const newAttachment: Attachment = {
           id: attachmentId,
           type: getFileType(fileExtension),
           uri: asset.uri,
           name: asset.name || fileName,
           status: "ready",
-        });
+        };
+        setAttachment(newAttachment);
+        return newAttachment;
       } else {
         Toast.show({
           type: "info",
           text1: "Failed to process document.",
         });
+        return null;
       }
     } catch (error) {
       Toast.show({
         type: "info",
         text1: "Error reading document.",
       });
+      return null;
     }
   };
 

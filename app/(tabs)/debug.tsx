@@ -1,18 +1,25 @@
 import { Expense, financeStore } from "@/src/store/financeStore";
-import { useEffect, useState } from "react";
-import { ScrollView, Text, Button, View } from "react-native";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
+import { Button, ScrollView, Text, View } from "react-native";
 import Toast from "react-native-toast-message";
 
 export default function DebugDB() {
   const [data, setData] = useState<Expense[]>([]);
+  const [statements, setStatements] = useState<any[]>([]);
 
   const loadData = () => {
     financeStore.queryExpenses().then(setData);
+    financeStore.getStatements().then(setStatements);
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, []),
+  );
+
+  console.log(statements);
 
   const handleClear = async () => {
     try {
@@ -30,6 +37,10 @@ export default function DebugDB() {
         <Button title="Clear Database" onPress={handleClear} color="#ff3b30" />
       </View>
       <Text className="text-foreground-primary">
+        Statements:
+        {JSON.stringify(statements, null, 2)}
+        {"\n\n"}
+        Expenses:
         {JSON.stringify(data, null, 2)}
       </Text>
     </ScrollView>

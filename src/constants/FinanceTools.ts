@@ -1,19 +1,44 @@
 import type { Expense } from "../store/financeStore";
 
+// Tool definitions following react-native-executorch's LLMTool format
+// Note: type must be "dict" (not "object") — the library passes these
+// directly into the Jinja chat template which expects Python-style types.
 export const FINANCE_TOOLS = [
   {
     name: "log_expense",
     description:
-      "Save a new single expense the user mentions (a purchase, bill, or payment) to their finance log.",
+      "Save a new expense the user mentions (a purchase, bill, or payment) to their finance log.",
     parameters: {
       type: "dict",
       properties: {
-        amount: { type: "number", description: "The monetary amount spent." },
-        currency: { type: "string", description: 'Currency code, e.g. "INR", "USD". Defaults to INR.' },
-        category: { type: "string", description: 'Spending category: "food", "transport", "shopping", "bills", "entertainment", "health", "education", "other".' },
-        merchant: { type: "string", description: "Name of the merchant, store, or service." },
-        note: { type: "string", description: "Any additional details." },
-        date: { type: "string", description: 'Date in YYYY-MM-DD. Defaults to today.' },
+        amount: {
+          type: "number",
+          description: "The monetary amount spent.",
+        },
+        currency: {
+          type: "string",
+          description:
+            'Currency code, e.g. "INR", "USD". Defaults to INR if not specified.',
+        },
+        category: {
+          type: "string",
+          description:
+            'Spending category: "food", "transport", "shopping", "bills", "entertainment", "health", "education", "other".',
+        },
+        merchant: {
+          type: "string",
+          description:
+            "Name of the merchant, store, or service where the money was spent.",
+        },
+        note: {
+          type: "string",
+          description: "Any additional details about the expense.",
+        },
+        date: {
+          type: "string",
+          description:
+            "Date of the expense in YYYY-MM-DD format. Defaults to today if not specified.",
+        },
       },
       required: ["amount"],
     },
@@ -21,34 +46,37 @@ export const FINANCE_TOOLS = [
   {
     name: "query_expenses",
     description:
-      "Look up previously logged expenses to answer questions about spending. ALWAYS call this when the user asks about past expenses.",
+      "Look up previously logged expenses, optionally filtered by category or date range, to answer questions about spending.",
     parameters: {
       type: "dict",
       properties: {
-        timeframe: { type: "string", description: "The time period to query: 'today', 'current_month', 'current_year', or 'all_time'." },
-        category: { type: "string", description: "Filter by spending category (e.g. 'food', 'transport')." },
-        merchant: { type: "string", description: "Filter by merchant name." }
+        category: {
+          type: "string",
+          description: "Filter by spending category.",
+        },
+        start_date: {
+          type: "string",
+          description: "Start of date range (YYYY-MM-DD).",
+        },
+        end_date: {
+          type: "string",
+          description: "End of date range (YYYY-MM-DD).",
+        },
       },
-      required: ["timeframe"],
+      required: [],
     },
   },
-  {
-    name: "get_spending_summary",
-    description: "Get a breakdown of all spending by category for a given period. Use when the user asks for a summary or breakdown.",
-    parameters: {
-      type: "dict",
-      properties: {
-        timeframe: { type: "string", description: "The time period to query: 'today', 'current_month', 'current_year', or 'all_time'." }
-      },
-      required: ["timeframe"],
-    },
-  }
 ];
 
+/**
+ * Creates the executeToolCallback for finance tools.
+ * This is called by the library's LLMController when it parses a tool call
+ * from the model's output. The return string gets appended to the message
+ * history so the model can summarize it in natural language.
+ */
 export function createFinanceToolHandler({
   addExpense,
   queryExpenses,
-  getSpendingSummary,
 }: {
   addExpense: (expense: {
     amount: number;
@@ -60,37 +88,15 @@ export function createFinanceToolHandler({
   }) => Promise<Expense>;
   queryExpenses: (filters?: {
     category?: string;
-    merchant?: string;
     start_date?: string;
     end_date?: string;
   }) => Promise<Expense[]>;
-  getSpendingSummary: (dateRange?: { start: string; end: string }) => Promise<Array<{ category: string; total: number; count: number }>>;
 }) {
   return async (call: {
     toolName: string;
     arguments: Record<string, any>;
   }): Promise<string | null> => {
     console.log("[FinanceTool] Dispatching:", call.toolName, call.arguments);
-
-    const getTimeframeDates = (timeframe?: string) => {
-      if (!timeframe || timeframe === 'all_time') return { start_date: undefined, end_date: undefined };
-      const now = new Date();
-      if (timeframe === 'today') {
-        const todayStr = now.toISOString().split('T')[0];
-        return { start_date: todayStr, end_date: todayStr };
-      }
-      if (timeframe === 'current_month') {
-        const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-        return { start_date: start, end_date: end };
-      }
-      if (timeframe === 'current_year') {
-        const start = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
-        const end = new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0];
-        return { start_date: start, end_date: end };
-      }
-      return { start_date: undefined, end_date: undefined };
-    };
 
     switch (call.toolName) {
       case "log_expense": {
@@ -103,7 +109,9 @@ export function createFinanceToolHandler({
             note: call.arguments.note,
             date: call.arguments.date,
           });
-          return `Expense logged successfully: ₹${expense.amount} for ${expense.merchant || expense.category} on ${expense.date}.`;
+          const result = `Expense logged successfully: ₹${expense.amount} for ${expense.merchant || expense.category} on ${expense.date}.`;
+          console.log("[FinanceTool] Result:", result);
+          return result;
         } catch (e) {
           console.error("[FinanceTool] Error logging expense:", e);
           return `Failed to log expense: ${e}`;
@@ -112,39 +120,26 @@ export function createFinanceToolHandler({
 
       case "query_expenses": {
         try {
-          const { start_date, end_date } = getTimeframeDates(call.arguments.timeframe);
           const expenses = await queryExpenses({
             category: call.arguments.category,
-            merchant: call.arguments.merchant,
-            start_date,
-            end_date,
+            start_date: call.arguments.start_date,
+            end_date: call.arguments.end_date,
           });
           if (expenses.length === 0) {
             return "No expenses found matching the given filters.";
           }
           const total = expenses.reduce((sum, e) => sum + e.amount, 0);
-          return `Found ${expenses.length} transaction(s) totaling ₹${total.toFixed(2)}.`;
+          const summary = expenses
+            .slice(0, 10)
+            .map(
+              (e) =>
+                `- ₹${e.amount} ${e.merchant ? `at ${e.merchant}` : ""} (${e.category}) on ${e.date}`,
+            )
+            .join("\n");
+          return `Found ${expenses.length} expense(s), total: ₹${total}.\n${summary}${expenses.length > 10 ? `\n...and ${expenses.length - 10} more.` : ""}`;
         } catch (e) {
           console.error("[FinanceTool] Error querying expenses:", e);
           return `Failed to query expenses: ${e}`;
-        }
-      }
-
-      case "get_spending_summary": {
-        try {
-          const { start_date, end_date } = getTimeframeDates(call.arguments.timeframe);
-          const summary = await getSpendingSummary({
-            start: start_date as string,
-            end: end_date as string,
-          });
-          if (summary.length === 0) {
-            return "No spending found for the given period.";
-          }
-          const breakdown = summary.map(s => `- ${s.category}: ₹${s.total.toFixed(2)} (${s.count} txns)`).join("\\n");
-          return `Spending Summary:\\n${breakdown}`;
-        } catch (e) {
-          console.error("[FinanceTool] Error getting summary:", e);
-          return `Failed to get spending summary: ${e}`;
         }
       }
 

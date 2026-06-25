@@ -1,5 +1,6 @@
 import { extractText, isAvailable } from "expo-pdf-text-extract";
 import React, { useEffect, useRef, useState } from "react";
+import { DeviceEventEmitter } from "react-native";
 import { models, useLLM, useOCR } from "react-native-executorch";
 import Toast from "react-native-toast-message";
 import {
@@ -11,6 +12,15 @@ import { useActiveModel, useModelStore } from "../store/modelStore";
 import { Message } from "../types";
 import { Attachment } from "./useAttachment";
 import { useFinance } from "./useFinance";
+
+export interface Summary {
+  totalTransactions: number;
+  bank: string;
+  cardLast4: string;
+  billingPeriod: string | undefined;
+  dueDate: string | undefined;
+  totalDue: number | undefined;
+}
 
 export function useChat() {
   const activeModelId = useModelStore((state) => state.activeModelId);
@@ -57,7 +67,7 @@ export function useChat() {
   });
 
   const [syntheticMessages, setSyntheticMessages] = useState<
-    { id: string; role: "assistant"; content: string; timestamp: number }[]
+    { id: string; role: "assistant"; content: Summary; timestamp: number }[]
   >([]);
 
   const {
@@ -110,7 +120,7 @@ export function useChat() {
 
   // sends reply
   const sendUserMessage = async (content: string, media?: Attachment) => {
-    if (!isReady || isGenerating) return;
+    if (isGenerating) return;
 
     if (media) {
       const nextIndex = messageHistory.length;
@@ -130,6 +140,10 @@ export function useChat() {
           console.log("OCR Result: ", extractedText);
           const augmentedPrompt = `[Extracted Document Text]:\n${extractedText}\n\n[User Request]:\n${content || "Log this receipt."}`;
 
+          if (!isReady) {
+            Toast.show({ type: "error", text1: "Model not ready" });
+            return;
+          }
           await sendMessage(augmentedPrompt);
         } catch (error) {
           Toast.show({
@@ -151,10 +165,9 @@ export function useChat() {
           }
 
           const rawText = await extractText(media.uri);
-          console.log(
-            "[useChat] PDF Result:",
-            rawText.substring(0, 100) + "...",
-          );
+          console.log("[useChat] ====== FULL PDF RESULT START ======");
+          console.log(rawText);
+          console.log("[useChat] ====== FULL PDF RESULT END ======");
 
           const parseResult = parseStatement(rawText);
 
@@ -169,17 +182,31 @@ export function useChat() {
 
           const { inserted, duplicates } = await bulkInsertFromStatement(
             parseResult.transactions,
+            {
+              card_last4: parseResult.cardLast4,
+              bank: parseResult.bank,
+              billing_period: parseResult.billingPeriod || "",
+              due_date: parseResult.dueDate || "",
+              total_due: parseResult.totalDue || 0,
+            },
           );
 
-          const summary =
-            `✅ Added ${inserted} transactions from ${parseResult.bank} card ending in ${parseResult.cardLast4}.` +
-            (duplicates > 0 ? ` (${duplicates} duplicates skipped)` : "");
+          let summary = {
+            totalTransactions: inserted,
+            bank: parseResult.bank,
+            cardLast4: parseResult.cardLast4,
+            billingPeriod: parseResult.billingPeriod,
+            dueDate: parseResult.dueDate,
+            totalDue: parseResult.totalDue,
+          };
 
           Toast.show({
             type: "success",
             text1: "Import Complete",
             text2: `${inserted} imported, ${duplicates} skipped`,
           });
+
+          DeviceEventEmitter.emit("finance_data_updated");
 
           setSyntheticMessages((prev) => [
             ...prev,
@@ -201,6 +228,10 @@ export function useChat() {
         }
       } else {
         try {
+          if (!isReady) {
+            Toast.show({ type: "error", text1: "Model not ready" });
+            return;
+          }
           await (
             sendMessage as (
               msg: string,
@@ -212,6 +243,10 @@ export function useChat() {
         }
       }
     } else {
+      if (!isReady) {
+        Toast.show({ type: "error", text1: "Model not ready" });
+        return;
+      }
       await sendMessage(content);
     }
   };
@@ -304,5 +339,6 @@ export function useChat() {
     generatedTokensCount,
     promptTokenCount,
     totalTokenCount,
+    syntheticMessages,
   };
 }

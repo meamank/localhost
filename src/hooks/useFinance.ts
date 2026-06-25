@@ -1,6 +1,10 @@
 import { useCallback } from "react";
-import { financeStore, Expense } from "../store/financeStore";
 import { ParsedTransaction } from "../constants/statementParser";
+import {
+  Expense,
+  financeStore,
+  StatementMetadata,
+} from "../store/financeStore";
 
 export function useFinance() {
   const addExpense = useCallback(
@@ -18,22 +22,27 @@ export function useFinance() {
   );
 
   const addMultipleExpenses = useCallback(
-    async (expenses: Array<{
-      amount: number;
-      currency?: string;
-      category?: string;
-      merchant?: string;
-      note?: string;
-      date?: string;
-    }>): Promise<Expense[]> => {
+    async (
+      expenses: Array<{
+        amount: number;
+        currency?: string;
+        category?: string;
+        merchant?: string;
+        note?: string;
+        date?: string;
+      }>,
+    ): Promise<Expense[]> => {
       return financeStore.addMultipleExpenses(expenses);
     },
     [],
   );
 
   const bulkInsertFromStatement = useCallback(
-    async (transactions: ParsedTransaction[]) => {
-      return financeStore.bulkInsertFromStatement(transactions);
+    async (
+      transactions: ParsedTransaction[],
+      metadata?: Omit<StatementMetadata, "id" | "created_at">,
+    ) => {
+      return financeStore.bulkInsertFromStatement(transactions, metadata);
     },
     [],
   );

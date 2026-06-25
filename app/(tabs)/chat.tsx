@@ -7,11 +7,11 @@ import iconColors from "@/src/constants/IconColors";
 import { useAttachment } from "@/src/hooks/useAttachment";
 import { useChat } from "@/src/hooks/useChat";
 import { useModelStore } from "@/src/store/modelStore";
-import { router, Stack } from "expo-router";
+import { Stack } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { KeyboardStickyView } from "react-native-keyboard-controller";
-export default function Index() {
+export default function ChatScreen() {
   const {
     messages,
     isGenerating,
@@ -64,7 +64,7 @@ export default function Index() {
       title: activeModelName,
       headerRight: () => (
         <Pressable
-          onPress={() => router.push(`/(drawer)/${activeModelId}`)}
+          onPress={() => console.log("pressed")}
           style={{ paddingRight: 16 }}
         >
           <Icon
@@ -100,7 +100,7 @@ export default function Index() {
 
       <KeyboardStickyView
         offset={{
-          closed: -20,
+          closed: -100,
           opened: 0,
         }}
       >
