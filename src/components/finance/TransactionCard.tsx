@@ -1,8 +1,17 @@
-import { View, Text } from "react-native";
-import React from "react";
-import { Icon } from "../Icon";
+import { Icon } from "@/src/components/Icon";
 import { Expense } from "@/src/store/financeStore";
-import { CATEGORY_KEYWORDS } from "@/src/constants/statementParser";
+import { Image, Text, View } from "react-native";
+
+const merchantImages: Record<string, any> = {
+  zomato: require("@/src/assets/images/zomato.png"),
+  blinkit: require("@/src/assets/images/blinkit.png"),
+  airtel: require("@/src/assets/images/airtel.png"),
+  jiomart: require("@/src/assets/images/jiomart.png"),
+  smartpoint: require("@/src/assets/images/jiomart.png"),
+  swiggy: require("@/src/assets/images/swiggy.png"),
+  instamart: require("@/src/assets/images/instamart.png"),
+  zepto: require("@/src/assets/images/zepto.png"),
+};
 
 export default function TransactionCard({ item }: { item: Expense }) {
   const date = new Date(item.date);
@@ -11,24 +20,41 @@ export default function TransactionCard({ item }: { item: Expense }) {
   const year = date.getFullYear();
   const formattedDate = `${day} ${month}, ${year}`;
 
+  const merchantLower = item.merchant.replace(/\s/g, "").toLowerCase();
+
+  // Check if we have a PNG for this merchant
+  const matchedImageKey = Object.keys(merchantImages).find((key) =>
+    merchantLower.includes(key),
+  );
+
+  // Fallback map for SVG Icons
   const iconMap: Record<string, string> = {
-    food: "food",
     entertainment: "entertainment",
     fuel: "fuel",
     grocery: "grocery",
     shopping: "shopping",
     transport: "travel",
     bills: "bills",
+    health: "health-icon",
     other: "other-icon",
   };
-
-  const TransactionIcon = iconMap[item.category] || "dinner";
+  const fallbackIcon = iconMap[item.category] || "dinner";
 
   return (
     <View className="flex-row justify-between mb-6">
       <View className="flex-row gap-4 items-center">
-        <View className="bg-background-tertiary/60 p-2 rounded-full">
-          <Icon name={TransactionIcon as any} size={24} />
+        <View
+          className="bg-background-tertiary/60 p-2 rounded-full justify-center items-center"
+          style={{ width: 44, height: 44 }}
+        >
+          {matchedImageKey ? (
+            <Image
+              source={merchantImages[matchedImageKey]}
+              style={{ width: 28, height: 28, resizeMode: "contain" }}
+            />
+          ) : (
+            <Icon name={fallbackIcon as any} size={24} />
+          )}
         </View>
         <View>
           <Text

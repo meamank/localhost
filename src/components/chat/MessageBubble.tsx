@@ -116,19 +116,56 @@ const MessageBubble = React.memo(function MessageBubble({
                 ● Reading document..
               </Text>
             )}
-            {isStreaming && (
-              <Text className="mt-2 text-xs font-medium text-foreground-primary">
-                ● Streaming...
-              </Text>
-            )}
-            <StreamdownText
-              flavor="github"
-              markdown={message.content}
-              onLinkPress={({ url }) => handleLinkPress(url)}
-              markdownStyle={
-                colorScheme === "dark" ? darkMarkdownStyle : lightMarkdownStyle
+            {(() => {
+              let displayContent = message.content;
+              if (typeof displayContent !== "string") {
+                displayContent = JSON.stringify(displayContent, null, 2);
               }
-            />
+              
+              const trimmed = displayContent.trim();
+              const isToolCall =
+                trimmed.includes('{"name":') ||
+                trimmed.includes('{"name"') ||
+                trimmed.startsWith("respond{") ||
+                trimmed.includes('"query_expenses"') ||
+                trimmed.includes('"get_spending_summary"') ||
+                trimmed.includes('"log_expense"');
+
+              if (isStreaming && isToolCall) {
+                return (
+                  <Text className="mt-2 text-xs font-medium text-foreground-primary">
+                    ● Querying database...
+                  </Text>
+                );
+              }
+
+              // Prevent catastrophic regex backtracking in streamdown by wrapping raw JSON in code blocks
+              if (
+                typeof displayContent === "string" &&
+                (trimmed.startsWith("{") || trimmed.startsWith("[")) &&
+                !displayContent.includes("```")
+              ) {
+                displayContent = "```json\n" + displayContent + "\n```";
+              }
+
+              return (
+                <>
+                  {isStreaming && (
+                    <Text className="mt-2 text-xs font-medium text-foreground-primary">
+                      ● Streaming...
+                    </Text>
+                  )}
+                  <StreamdownText
+                    flavor="github"
+                    markdown={displayContent}
+                    onLinkPress={({ url }) => handleLinkPress(url)}
+                    markdownStyle={
+                      colorScheme === "dark" ? darkMarkdownStyle : lightMarkdownStyle
+                    }
+                  />
+                </>
+              );
+            })()}
             {!isStreaming &&
               tokensPerSecond !== undefined &&
               tokensPerSecond > 0 && (

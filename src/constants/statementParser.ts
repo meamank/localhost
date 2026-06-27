@@ -89,18 +89,28 @@ export const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "drug",
     "medicine",
     "clinic",
+    "diagnostic",
   ],
   education: ["udemy", "coursera", "school", "college", "tuition"],
 };
 
 function autoCategorize(description: string): string {
+  const descLower = description.toLowerCase();
   for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
     if (
       keywords.some((kw) => {
-        // Escape special regex characters and use word boundaries
-        const escapedKw = kw.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
-        const regex = new RegExp(`\\b${escapedKw}\\b`, "i");
-        return regex.test(description);
+        const word = kw.toLowerCase().trim();
+        
+        // For short or common words, enforce word boundaries so "oil" doesn't match "spoil"
+        if (["now", "oil", "gas", "vi"].includes(word)) {
+          // Replace special characters (like underscores) with spaces so \b works correctly
+          const cleanDesc = descLower.replace(/[^a-z0-9]/g, " ");
+          return new RegExp(`\\b${word}\\b`, "i").test(cleanDesc);
+        }
+        
+        // For distinct brand names (swiggy, zomato, etc), a simple substring match is safer
+        // because bank statements often concatenate words (e.g., "UPIZOMATO" or "SWIGGYINSTAMART")
+        return descLower.includes(word);
       })
     ) {
       return category;
@@ -144,6 +154,26 @@ export function parseStatement(rawPdfText: string): StatementParseResult {
     const amount = parseFloat(amountStr);
 
     if (isNaN(amount)) continue;
+
+    // Ignore summary lines that aren't actual transactions
+    const descLower = rawDesc.toLowerCase();
+    if (
+      descLower.includes("credit limit") ||
+      descLower.includes("available credit") ||
+      descLower.includes("opening balance") ||
+      descLower.includes("closing balance") ||
+      descLower.includes("total amount due") ||
+      descLower.includes("total due") ||
+      descLower.includes("statement balance") ||
+      descLower.includes("previous balance") ||
+      descLower.includes("cash limit") ||
+      descLower.includes("available cash") ||
+      /^to\s*\d{2}[\/\-]\d{2}[\/\-]\d{4}/.test(descLower) ||
+      /^from\s*\d{2}[\/\-]\d{2}[\/\-]\d{4}/.test(descLower) ||
+      /^\d{2}[\/\-]\d{2}[\/\-]\d{4}$/.test(descLower)
+    ) {
+      continue;
+    }
 
     // Determine type
     const isCredit =

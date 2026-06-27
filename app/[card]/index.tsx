@@ -11,8 +11,11 @@ import { useEffect, useState } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useColorScheme } from "@/src/components/useColorScheme";
 import { extractDateDetails } from "@/src/constants/helpers";
+import m3 from "@/src/constants/m3";
 import { getUniqueStatements } from "@/src/constants/statementUtils";
+import { BarChart } from "react-native-gifted-charts";
 
 export default function CardDetailsScreen() {
   const { card } = useLocalSearchParams<{
@@ -32,6 +35,8 @@ export default function CardDetailsScreen() {
   const [transactions, setTransactions] = useState<Expense[]>([]);
   const [bank, last4] = card.split("_");
   const insets = useSafeAreaInsets();
+
+  const colorScheme = useColorScheme();
 
   useEffect(() => {
     financeStore.getStatements().then((allStatements) => {
@@ -175,6 +180,30 @@ export default function CardDetailsScreen() {
     return `${month}, ${year}`;
   };
 
+  const chartTransactionsByDate = Object.entries(
+    transactions?.reduce(
+      (acc, curr) => {
+        if (!acc[curr.date]) {
+          acc[curr.date] = 0;
+        }
+        acc[curr.date] += curr.amount;
+        return acc;
+      },
+      {} as Record<string, number>,
+    ),
+  )
+    .map(([date, totalAmount]) => {
+      const extractedDate = extractDateDetails(date);
+      const formattedDate = `${extractedDate.month.slice(0, 3).toUpperCase()} ${extractedDate.date}`;
+
+      return {
+        value: totalAmount,
+        label: formattedDate,
+        yAxisLabelText: totalAmount,
+      };
+    })
+    .reverse();
+
   return (
     <View
       style={{ paddingTop: insets.top + 80 }}
@@ -213,42 +242,65 @@ export default function CardDetailsScreen() {
         </Pressable>
       </View>
 
-      {historicalStatements[currentHistoryIndex] && (
-        <View className="flex-row justify-between mt-6 border-b border-outline-variant/30 pb-6">
-          <View className="gap-2">
-            <Text className="text-title-md font-sans font-semibold">
+      {/* Chart */}
+      <View className="flex-row justify-between items-center">
+        <Pressable
+          onPress={previousHistory}
+          disabled={currentHistoryIndex === 0}
+          className="disabled:opacity-50"
+        >
+          <Icon name="chevron-left" size={24} />
+        </Pressable>
+        {historicalStatements[currentHistoryIndex] && (
+          <View className="flex my-6 ">
+            <Text className="text-title-md font-sans font-semibold opacity-80">
               {formattedStatementDate(
                 historicalStatements[currentHistoryIndex].billing_period,
               )}
             </Text>
-            <Text className="text-exp-title-sm font-bold text-primary">
-              ₹
-              {historicalStatements[
-                currentHistoryIndex
-              ].total_due.toLocaleString("en-IN", {
-                minimumFractionDigits: 2,
-              })}
-            </Text>
+            {/* <Text className="text-exp-title-sm font-bold text-primary">
+                ₹
+                {historicalStatements[
+                  currentHistoryIndex
+                ].total_due.toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                })}
+              </Text> */}
           </View>
-
-          <View className="flex-row gap-4">
-            <Pressable
-              onPress={previousHistory}
-              disabled={currentHistoryIndex === 0}
-              className="disabled:opacity-50"
-            >
-              <Icon name="left-arrow" size={20} />
-            </Pressable>
-            <Pressable
-              onPress={nextHistory}
-              disabled={currentHistoryIndex === historicalStatements.length - 1}
-              className="disabled:opacity-50"
-            >
-              <Icon name="right-arrow" size={20} />
-            </Pressable>
-          </View>
-        </View>
-      )}
+        )}
+        <Pressable
+          onPress={nextHistory}
+          disabled={currentHistoryIndex === historicalStatements.length - 1}
+          className="disabled:opacity-50"
+        >
+          <Icon name="chevron-right" size={24} />
+        </Pressable>
+      </View>
+      <View style={{ backgroundColor: m3[colorScheme].accentBlueSurface }}>
+        <BarChart
+          initialSpacing={5}
+          data={chartTransactionsByDate}
+          showGradient
+          gradientColor={m3[colorScheme].primary}
+          frontColor={m3[colorScheme].primaryContainer}
+          noOfSections={3}
+          barBorderRadius={5}
+          yAxisThickness={0}
+          xAxisThickness={0}
+          xAxisLabelTextStyle={{
+            fontSize: 12,
+            fontWeight: "500",
+            fontFamily: "GoogleSansFlexRound_600SemiBold",
+            color: m3[colorScheme].outlineVariant,
+          }}
+          yAxisTextStyle={{
+            fontWeight: "500",
+            color: m3[colorScheme].outlineVariant,
+          }}
+          showXAxisIndices={false}
+          dashGap={10}
+        />
+      </View>
 
       <Text className="text-on-surface font-sans font-semibold text-title-md mt-4 mb-6">
         Transactions

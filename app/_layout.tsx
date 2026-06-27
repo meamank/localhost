@@ -1,8 +1,8 @@
 import { useColorScheme } from "@/src/components/useColorScheme";
 
 import { useModelStore } from "@/src/store/modelStore";
-import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import {
   Montserrat_400Regular,
@@ -24,7 +24,7 @@ import "react-native-reanimated";
 import Toast from "react-native-toast-message";
 export {
   // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
+  ErrorBoundary
 } from "expo-router";
 
 initExecutorch({
@@ -47,6 +47,7 @@ function RootLayoutNav() {
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="[card]" options={{ headerShown: false }} />
+              <Stack.Screen name="cardHub" options={{ headerShown: false }} />
             </Stack>
 
             <StatusBar style="auto" />

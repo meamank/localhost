@@ -52,7 +52,11 @@ export const FINANCE_TOOLS = [
       properties: {
         category: {
           type: "string",
-          description: "Filter by spending category.",
+          description: 'Filter by one of the standard categories: "food", "transport", "shopping", "bills", "entertainment", "health", "education", "other". (e.g. map medicines -> health, restaurants -> food).',
+        },
+        merchant: {
+          type: "string",
+          description: "Filter by merchant name (e.g., Zomato, Uber).",
         },
         start_date: {
           type: "string",
@@ -66,6 +70,24 @@ export const FINANCE_TOOLS = [
       required: [],
     },
   },
+  {
+    name: "get_spending_summary",
+    description: "Generate a summary of all logged expenses within a given date range.",
+    parameters: {
+      type: "dict",
+      properties: {
+        start_date: {
+          type: "string",
+          description: "Start of date range (YYYY-MM-DD).",
+        },
+        end_date: {
+          type: "string",
+          description: "End of date range (YYYY-MM-DD).",
+        },
+      },
+      required: ["start_date", "end_date"],
+    },
+  },
 ];
 
 /**
@@ -77,6 +99,7 @@ export const FINANCE_TOOLS = [
 export function createFinanceToolHandler({
   addExpense,
   queryExpenses,
+  getSpendingSummary,
 }: {
   addExpense: (expense: {
     amount: number;
@@ -88,9 +111,14 @@ export function createFinanceToolHandler({
   }) => Promise<Expense>;
   queryExpenses: (filters?: {
     category?: string;
+    merchant?: string;
     start_date?: string;
     end_date?: string;
   }) => Promise<Expense[]>;
+  getSpendingSummary: (dateRange?: {
+    start: string;
+    end: string;
+  }) => Promise<{ category: string; total: number; count: number }[]>;
 }) {
   return async (call: {
     toolName: string;
@@ -102,12 +130,12 @@ export function createFinanceToolHandler({
       case "log_expense": {
         try {
           const expense = await addExpense({
-            amount: call.arguments.amount,
-            currency: call.arguments.currency,
-            category: call.arguments.category,
-            merchant: call.arguments.merchant,
-            note: call.arguments.note,
-            date: call.arguments.date,
+            amount: Number(call.arguments.amount) || 0,
+            currency: call.arguments.currency ?? "INR",
+            category: call.arguments.category ?? "other",
+            merchant: call.arguments.merchant ?? "",
+            note: call.arguments.note ?? "",
+            date: call.arguments.date ?? new Date().toISOString().split("T")[0],
           });
           const result = `Expense logged successfully: ₹${expense.amount} for ${expense.merchant || expense.category} on ${expense.date}.`;
           console.log("[FinanceTool] Result:", result);
@@ -121,9 +149,10 @@ export function createFinanceToolHandler({
       case "query_expenses": {
         try {
           const expenses = await queryExpenses({
-            category: call.arguments.category,
-            start_date: call.arguments.start_date,
-            end_date: call.arguments.end_date,
+            category: call.arguments.category ?? undefined,
+            merchant: call.arguments.merchant ?? undefined,
+            start_date: call.arguments.start_date ?? undefined,
+            end_date: call.arguments.end_date ?? undefined,
           });
           if (expenses.length === 0) {
             return "No expenses found matching the given filters.";
@@ -140,6 +169,23 @@ export function createFinanceToolHandler({
         } catch (e) {
           console.error("[FinanceTool] Error querying expenses:", e);
           return `Failed to query expenses: ${e}`;
+        }
+      }
+
+      case "get_spending_summary": {
+        try {
+          const summary = await getSpendingSummary({
+            start: call.arguments.start_date ?? undefined,
+            end: call.arguments.end_date ?? undefined,
+          });
+          const total = summary.reduce((sum, item) => sum + item.total, 0);
+          const catBreakdown = summary
+            .map((item) => `- ${item.category}: ₹${item.total}`)
+            .join("\n");
+          return `Total spent: ₹${total}\nCategory Breakdown:\n${catBreakdown}`;
+        } catch (e) {
+          console.error("[FinanceTool] Error getting spending summary:", e);
+          return `Failed to get spending summary: ${e}`;
         }
       }
 

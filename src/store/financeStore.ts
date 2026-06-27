@@ -357,8 +357,12 @@ export const financeStore = {
     const params: any[] = [];
 
     if (filters?.category) {
-      conditions.push("category = ?");
-      params.push(filters.category);
+      let cat = filters.category.toLowerCase();
+      if (cat.endsWith("ies")) cat = cat.slice(0, -3);
+      else if (cat.endsWith("s")) cat = cat.slice(0, -1);
+      
+      conditions.push("category LIKE ?");
+      params.push(`%${cat}%`);
     }
     if (filters?.merchant) {
       conditions.push("merchant LIKE ?");

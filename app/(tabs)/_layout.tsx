@@ -7,7 +7,7 @@ import { useClientOnlyValue } from "@/src/components/useClientOnlyValue";
 import { useColorScheme } from "@/src/components/useColorScheme";
 import m3 from "@/src/constants/m3";
 import { Tabs } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 import AddScreen from "./add";
 
 export default function TabLayout() {
@@ -74,43 +74,18 @@ export default function TabLayout() {
         <Tabs.Screen
           name="index"
           options={{
+            title: "LocalHost",
+            headerTitleStyle: {
+              fontFamily: "GoogleSansFlexRound_600SemiBold",
+              fontSize: 24,
+            },
             tabBarLabel: "Home",
-            headerTransparent: true,
+
             headerStyle: {
               backgroundColor: "transparent",
             },
             headerTitleAlign: "left",
-            headerTitle: () => null,
-            headerLeft: () => (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  paddingLeft: 16,
-                  gap: 4,
-                }}
-              >
-                <Pressable onPress={() => console.log("Icon pressed!")}>
-                  <Icon
-                    name="app-logo"
-                    size={28}
-                    color={m3[colorScheme].primary}
-                  />
-                </Pressable>
-                <Text
-                  style={{
-                    fontFamily: "GoogleSansFlexRound_600SemiBold",
-                    fontSize: 22,
-                    color: m3[colorScheme].onSurface,
-
-                    opacity: 0.9,
-                  }}
-                >
-                  LocalHost
-                </Text>
-              </View>
-            ),
+            headerTransparent: true,
             headerShadowVisible: false,
             tabBarIcon: ({ color, focused }) => (
               <View
@@ -124,7 +99,7 @@ export default function TabLayout() {
                 }}
               >
                 <Icon
-                  name="process"
+                  name={focused ? "home-active" : "home-inactive"}
                   size={24}
                   color={focused ? m3[colorScheme].onPrimaryContainer : color}
                 />
@@ -148,7 +123,7 @@ export default function TabLayout() {
                 }}
               >
                 <Icon
-                  name="chat-tab"
+                  name={focused ? "chat-active" : "chat-inactive"}
                   size={24}
                   color={focused ? m3[colorScheme].onPrimaryContainer : color}
                 />
@@ -170,7 +145,11 @@ export default function TabLayout() {
                   marginTop: -12,
                 }}
               >
-                <Icon name="plus" size={28} color={m3[colorScheme].onPrimary} />
+                <Icon
+                  name={focused ? "cancel" : "plus"}
+                  size={28}
+                  color={m3[colorScheme].onPrimary}
+                />
               </Pressable>
             ),
           }}
