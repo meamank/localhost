@@ -1,10 +1,11 @@
 import iconColors from "@/src/constants/IconColors";
-import React from "react";
-import { Alert, Image, Linking, Text, View } from "react-native";
+import React, { useState } from "react";
+import { Alert, Image, Linking, Text, View, Pressable } from "react-native";
 import type { MarkdownStyle } from "react-native-enriched-markdown";
 import { StreamdownText } from "react-native-streamdown";
 import { Message } from "../../types";
 import { useColorScheme } from "../useColorScheme";
+import { Icon } from "../Icon";
 
 interface MessageBubbleProps {
   message: Message;
@@ -20,6 +21,7 @@ const MessageBubble = React.memo(function MessageBubble({
   isExtractingText,
 }: MessageBubbleProps) {
   const isUser = message.role === "user";
+  const [isThoughtExpanded, setIsThoughtExpanded] = useState(false);
 
   const colorScheme = useColorScheme() === "dark" ? "dark" : "light";
 
@@ -122,47 +124,87 @@ const MessageBubble = React.memo(function MessageBubble({
                 displayContent = JSON.stringify(displayContent, null, 2);
               }
               
-              const trimmed = displayContent.trim();
-              const isToolCall =
-                trimmed.includes('{"name":') ||
-                trimmed.includes('{"name"') ||
-                trimmed.startsWith("respond{") ||
-                trimmed.includes('"query_expenses"') ||
-                trimmed.includes('"get_spending_summary"') ||
-                trimmed.includes('"log_expense"');
-
-              if (isStreaming && isToolCall) {
-                return (
-                  <Text className="mt-2 text-xs font-medium text-foreground-primary">
-                    ● Querying database...
-                  </Text>
-                );
+              let thoughtContent = null;
+              let mainContent = displayContent;
+              
+              const thinkStart = displayContent.indexOf("<think>");
+              if (thinkStart !== -1) {
+                const thinkEnd = displayContent.indexOf("</think>");
+                if (thinkEnd !== -1) {
+                  thoughtContent = displayContent.substring(thinkStart + 7, thinkEnd).trim();
+                  mainContent = displayContent.substring(0, thinkStart) + displayContent.substring(thinkEnd + 9);
+                } else {
+                  thoughtContent = displayContent.substring(thinkStart + 7).trim();
+                  mainContent = displayContent.substring(0, thinkStart);
+                }
               }
+              
+              let trimmedMain = mainContent.trim();
+              const isToolCall =
+                trimmedMain.includes('{"name":') ||
+                trimmedMain.includes('{"name"') ||
+                trimmedMain.startsWith("respond{") ||
+                trimmedMain.includes('"query_expenses"') ||
+                trimmedMain.includes('"get_spending_summary"') ||
+                trimmedMain.includes('"log_expense"');
+
+              const isThinkingActive = isStreaming && thinkStart !== -1 && !displayContent.includes("</think>");
 
               // Prevent catastrophic regex backtracking in streamdown by wrapping raw JSON in code blocks
               if (
-                typeof displayContent === "string" &&
-                (trimmed.startsWith("{") || trimmed.startsWith("[")) &&
-                !displayContent.includes("```")
+                !isToolCall &&
+                (trimmedMain.startsWith("{") || trimmedMain.startsWith("[")) &&
+                !trimmedMain.includes("```")
               ) {
-                displayContent = "```json\n" + displayContent + "\n```";
+                trimmedMain = "```json\n" + trimmedMain + "\n```";
               }
 
               return (
                 <>
-                  {isStreaming && (
-                    <Text className="mt-2 text-xs font-medium text-foreground-primary">
-                      ● Streaming...
+                  {thoughtContent !== null && (
+                    <View className="mb-2 bg-background-tertiary rounded-lg border border-border overflow-hidden min-w-[200px]">
+                      <Pressable
+                        className="flex-row items-center justify-between p-3"
+                        onPress={() => setIsThoughtExpanded(!isThoughtExpanded)}
+                      >
+                        <Text className="text-foreground-secondary font-medium text-sm">
+                          {isThinkingActive ? "● Thinking..." : "Thought Process"}
+                        </Text>
+                        <Icon name={isThoughtExpanded ? "chevron-up" : "chevron-down"} size={20} color={c.secondary} />
+                      </Pressable>
+                      {isThoughtExpanded && (
+                        <View className="p-3 pt-0 border-t border-border mt-2">
+                          <Text className="text-foreground-secondary text-sm leading-5">
+                            {thoughtContent}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {isStreaming && isToolCall && (
+                    <Text className="mt-2 text-xs font-medium text-foreground-primary animate-pulse">
+                      ● Querying database...
                     </Text>
                   )}
-                  <StreamdownText
-                    flavor="github"
-                    markdown={displayContent}
-                    onLinkPress={({ url }) => handleLinkPress(url)}
-                    markdownStyle={
-                      colorScheme === "dark" ? darkMarkdownStyle : lightMarkdownStyle
-                    }
-                  />
+
+                  {!isToolCall && trimmedMain ? (
+                    <>
+                      {isStreaming && !isThinkingActive && !isToolCall && (
+                        <Text className="mt-2 text-xs font-medium text-foreground-primary">
+                          ● Streaming...
+                        </Text>
+                      )}
+                      <StreamdownText
+                        flavor="github"
+                        markdown={trimmedMain}
+                        onLinkPress={({ url }) => handleLinkPress(url)}
+                        markdownStyle={
+                          colorScheme === "dark" ? darkMarkdownStyle : lightMarkdownStyle
+                        }
+                      />
+                    </>
+                  ) : null}
                 </>
               );
             })()}

@@ -54,7 +54,16 @@ export default function ChatInput({
     pickAttachment();
   };
 
-  return (
+  return isGenerating ? (
+    <View className="flex-1 flex-row justify-end items-center py-1">
+      <Pressable
+        onPress={onStop}
+        className="bg-foreground-primary rounded-full h-12 w-12 items-center justify-center"
+      >
+        <Icon name="stop" size={24} color={iconColor} />
+      </Pressable>
+    </View>
+  ) : (
     <View
       className={`flex-col bg-background-tertiary pl-4 pr-1.5 pt-1.5 pb-1.5 flex-1 ${attachment ? "rounded-2xl" : "rounded-full"}`}
     >

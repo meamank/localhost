@@ -67,7 +67,7 @@ export function useChat() {
   });
 
   const [syntheticMessages, setSyntheticMessages] = useState<
-    { id: string; role: "assistant"; content: Summary; timestamp: number }[]
+    { id: string; role: "assistant"; content: string; timestamp: number }[]
   >([]);
 
   const {
@@ -79,12 +79,11 @@ export function useChat() {
 
   useEffect(() => {
     if (isReady && activeModelId) {
-      const systemPrompt = `You are Nirvah, a finance assistant. You have tools to query the database. NEVER guess data. Current date: ${new Date().toISOString().split("T")[0]}.
+      const systemPrompt = `You are finance assistant. You have tools to query the database. NEVER guess data. Current date: ${new Date().toISOString().split("T")[0]}.
 RULES:
-1. If asked about a specific category (like "groceries") or merchant, ALWAYS use the "query_expenses" tool.
-2. If asked for a total spending summary, ALWAYS use the "get_spending_summary" tool.
-3. If asked to save an expense, ALWAYS use the "log_expense" tool.
-IMPORTANT: Do not answer directly if you need data. ALWAYS use a tool. Respond with exactly ONE tool call.`;
+1. specific category expenses (like "groceries") or merchant, ALWAYS use the "query_expenses" tool.
+2. to save an expense, ALWAYS use the "log_expense" tool.
+IMPORTANT: Do not answer directly if you need data. ALWAYS use a tool. Respond with exactly ONE tool call. Think briefly: decide the tool and call it.`;
 
       const financeToolHandler = createFinanceToolHandler({
         addExpense,
@@ -217,7 +216,7 @@ IMPORTANT: Do not answer directly if you need data. ALWAYS use a tool. Respond w
             {
               id: `synth_${Date.now()}`,
               role: "assistant",
-              content: summary,
+              content: JSON.stringify(summary, null, 2),
               timestamp: Date.now(),
             },
           ]);
