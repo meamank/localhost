@@ -40,7 +40,7 @@ function RootLayoutNav() {
             value={colorScheme === "light" ? DefaultTheme : DarkTheme}
           >
             <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
               <Stack.Screen name="[card]" options={{ headerShown: false }} />
               <Stack.Screen name="cardHub" options={{ headerShown: false }} />
             </Stack>

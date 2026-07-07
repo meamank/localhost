@@ -77,8 +77,6 @@ const MessageBubble = React.memo(function MessageBubble({
     ]);
   };
 
-  console.log(message);
-
   return (
     <View
       className={`flex-row ${isUser ? "justify-end" : "justify-start"} mb-4`}

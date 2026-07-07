@@ -124,7 +124,10 @@ export default function Home() {
           </Text>
 
           <Text className="text-primary text-display-md font-bold tracking-widest">
-            ₹{totalSpending}
+            ₹
+            {totalSpending.toLocaleString("en-US", {
+              maximumFractionDigits: 2,
+            })}
           </Text>
         </View>
 
@@ -134,11 +137,10 @@ export default function Home() {
             Cards
           </Text>
           <View className="flex-row items-center gap-2">
-            <Text className="text-title-sm">View All</Text>
-            <Pressable
-              onPress={() => router.push("/cardHub")}
-              className="bg-accent-blue-container p-1 rounded-full"
-            >
+            <Text className="font-sans font-semibold text-body-sm">
+              View All
+            </Text>
+            <Pressable onPress={() => router.push("/cardHub")}>
               <Icon name="chevron-right" size={18} />
             </Pressable>
           </View>
@@ -228,6 +230,24 @@ export default function Home() {
         renderItem={renderTransactionItem}
         ListEmptyComponent={<Empty title="transactions" />}
       />
+
+      {/* Floating Action Button */}
+      <Pressable
+        onPress={() => router.push("/chat")}
+        className="absolute right-6 bg-primary items-center justify-center rounded-full"
+        style={{
+          bottom: Math.max(insets.bottom + 24, 24),
+          width: 56,
+          height: 56,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 4.65,
+          elevation: 8,
+        }}
+      >
+        <Text className="text-title-sm text-on-primary">Ask</Text>
+      </Pressable>
     </View>
   );
 }

@@ -57,12 +57,12 @@ export function useChat() {
       role: m.role,
       content: m.content,
     }));
-    
+
     // Inject system prompt if it's a new conversation
     if (messages.length === 0) {
       currentConversation.unshift({ role: "system", content: SYSTEM_PROMPT });
     }
-    
+
     currentConversation.push({ role: "user", content: userMsg.content });
 
     try {
@@ -108,15 +108,18 @@ export function useChat() {
       // Handle native tool calls
       if (result?.tool_calls && result.tool_calls.length > 0) {
         console.log("[useChat] Detected native tool calls:", result.tool_calls);
-        
+
         for (const toolCall of result.tool_calls) {
           try {
             const res = await toolHandler({
               toolName: toolCall.function.name,
-              arguments: typeof toolCall.function.arguments === 'string' ? JSON.parse(toolCall.function.arguments) : toolCall.function.arguments,
+              arguments:
+                typeof toolCall.function.arguments === "string"
+                  ? JSON.parse(toolCall.function.arguments)
+                  : toolCall.function.arguments,
             });
             const resultStr = res || "Tool returned nothing.";
-            finalContent += `\n\n**Result from ${toolCall.function.name}:**\n${resultStr}`;
+            finalContent += `\n\n**Result from query:**\n${resultStr}`;
           } catch (e) {
             console.error("[useChat] Tool execution error:", e);
             finalContent += `\n\n**Error executing ${toolCall.function.name}:**\n${e}`;
@@ -144,7 +147,6 @@ export function useChat() {
       );
 
       currentConversation.push({ role: "assistant", content: finalContent });
-
     } catch (error) {
       console.error("Chat Error", error);
       setMessages((prev) => [

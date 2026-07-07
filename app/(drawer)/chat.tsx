@@ -6,8 +6,8 @@ import iconColors from "@/src/constants/IconColors";
 
 import { useAttachment } from "@/src/hooks/useAttachment";
 import { useChat } from "@/src/hooks/useChat";
-import { useModelStore } from "@/src/store/modelStore";
 import { useLlamaStore } from "@/src/store/llamaStore";
+import { useModelStore } from "@/src/store/modelStore";
 import { Stack } from "expo-router";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
@@ -62,7 +62,9 @@ export default function ChatScreen() {
     return (
       <View className="flex-1 items-center justify-center gap-3 px-8 bg-background-primary">
         <ActivityIndicator size="large" color="#fff" />
-        <Text className="text-sm text-white/50">Loading model into memory…</Text>
+        <Text className="text-sm text-white/50">
+          Loading model into memory…
+        </Text>
       </View>
     );
   }
@@ -72,8 +74,14 @@ export default function ChatScreen() {
       <View className="flex-1 bg-background-primary">
         <Stack.Screen options={stackOptions} />
         <View className="flex-1 items-center justify-center gap-3 px-8">
-          <Icon name="models-tab" size={48} color={iconColors[colorScheme].primary} />
-          <Text className="text-lg font-bold text-foreground-primary">No Model Active</Text>
+          <Icon
+            name="models-tab"
+            size={48}
+            color={iconColors[colorScheme].primary}
+          />
+          <Text className="text-lg font-bold text-foreground-primary">
+            No Model Active
+          </Text>
           <Text className="text-sm text-center text-foreground-secondary">
             Go to the Models tab to select and initialize a model.
           </Text>
@@ -95,7 +103,7 @@ export default function ChatScreen() {
 
       <KeyboardStickyView
         offset={{
-          closed: -100,
+          closed: -30,
           opened: 0,
         }}
       >
