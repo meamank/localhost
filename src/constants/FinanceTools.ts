@@ -1,92 +1,59 @@
 import type { Expense } from "../store/financeStore";
 
-// Tool definitions following react-native-executorch's LLMTool format
-// Note: type must be "dict" (not "object") — the library passes these
-// directly into the Jinja chat template which expects Python-style types.
+// Tool definitions for the finance assistant LLM.
+// Note: type must be "dict" (not "object") for compatibility with
+// Llama/Qwen tool-calling chat templates.
 export const FINANCE_TOOLS = [
   {
-    name: "log_expense",
-    description:
-      "Save a new expense the user mentions (a purchase, bill, or payment) to their finance log.",
-    parameters: {
-      type: "dict",
-      properties: {
-        amount: {
-          type: "number",
-          description: "The monetary amount spent.",
+    type: "function",
+    function: {
+      name: "query_expenses",
+      description:
+        "Look up previously logged expenses, optionally filtered by category or date range, to answer questions about spending.",
+      parameters: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            description: 'Filter by one of the standard categories: "food", "transport", "shopping", "bills", "entertainment", "health", "education", "other". (e.g. map medicines -> health, restaurants -> food).',
+          },
+          merchant: {
+            type: "string",
+            description: "Filter by merchant name (e.g., Zomato, Uber).",
+          },
+          start_date: {
+            type: "string",
+            description: "Start of date range (YYYY-MM-DD).",
+          },
+          end_date: {
+            type: "string",
+            description: "End of date range (YYYY-MM-DD).",
+          },
         },
-        currency: {
-          type: "string",
-          description:
-            'Currency code, e.g. "INR", "USD". Defaults to INR if not specified.',
-        },
-        category: {
-          type: "string",
-          description:
-            'Spending category: "food", "transport", "shopping", "bills", "entertainment", "health", "education", "other".',
-        },
-        merchant: {
-          type: "string",
-          description:
-            "Name of the merchant, store, or service where the money was spent.",
-        },
-        note: {
-          type: "string",
-          description: "Any additional details about the expense.",
-        },
-        date: {
-          type: "string",
-          description:
-            "Date of the expense in YYYY-MM-DD format. Defaults to today if not specified.",
-        },
+        required: [],
       },
-      required: ["amount"],
-    },
+    }
   },
   {
-    name: "query_expenses",
-    description:
-      "Look up previously logged expenses, optionally filtered by category or date range, to answer questions about spending.",
-    parameters: {
-      type: "dict",
-      properties: {
-        category: {
-          type: "string",
-          description: 'Filter by one of the standard categories: "food", "transport", "shopping", "bills", "entertainment", "health", "education", "other". (e.g. map medicines -> health, restaurants -> food).',
+    type: "function",
+    function: {
+      name: "get_spending_summary",
+      description: "Generate a summary of all logged expenses within a given date range.",
+      parameters: {
+        type: "object",
+        properties: {
+          start_date: {
+            type: "string",
+            description: "Start of date range (YYYY-MM-DD).",
+          },
+          end_date: {
+            type: "string",
+            description: "End of date range (YYYY-MM-DD).",
+          },
         },
-        merchant: {
-          type: "string",
-          description: "Filter by merchant name (e.g., Zomato, Uber).",
-        },
-        start_date: {
-          type: "string",
-          description: "Start of date range (YYYY-MM-DD).",
-        },
-        end_date: {
-          type: "string",
-          description: "End of date range (YYYY-MM-DD).",
-        },
+        required: ["start_date", "end_date"],
       },
-      required: [],
-    },
-  },
-  {
-    name: "get_spending_summary",
-    description: "Generate a summary of all logged expenses within a given date range.",
-    parameters: {
-      type: "dict",
-      properties: {
-        start_date: {
-          type: "string",
-          description: "Start of date range (YYYY-MM-DD).",
-        },
-        end_date: {
-          type: "string",
-          description: "End of date range (YYYY-MM-DD).",
-        },
-      },
-      required: ["start_date", "end_date"],
-    },
+    }
   },
 ];
 
@@ -97,18 +64,9 @@ export const FINANCE_TOOLS = [
  * history so the model can summarize it in natural language.
  */
 export function createFinanceToolHandler({
-  addExpense,
   queryExpenses,
   getSpendingSummary,
 }: {
-  addExpense: (expense: {
-    amount: number;
-    currency?: string;
-    category?: string;
-    merchant?: string;
-    note?: string;
-    date?: string;
-  }) => Promise<Expense>;
   queryExpenses: (filters?: {
     category?: string;
     merchant?: string;
@@ -127,25 +85,6 @@ export function createFinanceToolHandler({
     console.log("[FinanceTool] Dispatching:", call.toolName, call.arguments);
 
     switch (call.toolName) {
-      case "log_expense": {
-        try {
-          const expense = await addExpense({
-            amount: Number(call.arguments.amount) || 0,
-            currency: call.arguments.currency ?? "INR",
-            category: call.arguments.category ?? "other",
-            merchant: call.arguments.merchant ?? "",
-            note: call.arguments.note ?? "",
-            date: call.arguments.date ?? new Date().toISOString().split("T")[0],
-          });
-          const result = `Expense logged successfully: ₹${expense.amount} for ${expense.merchant || expense.category} on ${expense.date}.`;
-          console.log("[FinanceTool] Result:", result);
-          return result;
-        } catch (e) {
-          console.error("[FinanceTool] Error logging expense:", e);
-          return `Failed to log expense: ${e}`;
-        }
-      }
-
       case "query_expenses": {
         try {
           const expenses = await queryExpenses({

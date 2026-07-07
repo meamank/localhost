@@ -30,6 +30,16 @@ export default ({ config }) => {
     plugins: [
       "expo-router",
       [
+        "llama.rn",
+        // optional fields, below are the default values
+        {
+          enableEntitlements: true,
+          entitlementsProfile: "production",
+          forceCxx20: true,
+          enableOpenCLAndHexagon: true,
+        },
+      ],
+      [
         "expo-splash-screen",
         {
           image: "./src/assets/images/splash-icon.png",

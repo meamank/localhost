@@ -1,33 +1,53 @@
 import { Icon } from "@/src/components/Icon";
-import ModelCard from "@/src/components/models/ModelCard";
 import { useColorScheme } from "@/src/components/useColorScheme";
 import iconColors from "@/src/constants/IconColors";
 import m3 from "@/src/constants/m3";
-import { AVAILABLE_MODELS } from "@/src/constants/models";
-import { useModelDownload } from "@/src/hooks/useModelDownload";
-import { useModelSelection } from "@/src/hooks/useModelSelection";
+import { Attachment, useAttachment } from "@/src/hooks/useAttachment";
+import { useLlamaStore } from "@/src/store/llamaStore";
+
 import { useModelStore } from "@/src/store/modelStore";
 
 import { Tabs } from "expo-router";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { useState } from "react";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 export default function Models() {
-  const {
-    downloadModel,
-    cancelDownloading,
-    resumeDownloading,
-    pauseDownloading,
-    deleteDownloaded,
-  } = useModelDownload();
-  const { selectModel } = useModelSelection();
-
+  const [isLoading, setIsLoading] = useState(false);
   const localModels = useModelStore((state) => state.localModels);
-  const modelStates = useModelStore((state) => state.modelStates);
   const activeModelId = useModelStore((state) => state.activeModelId);
-  const isModelReady = useModelStore((state) => state.isModelready);
-  const modelSizes = useModelStore((state) => state.modelSizes);
+  const addLocalModel = useModelStore((state) => state.addLocalModel);
+  const setActiveModelId = useModelStore((state) => state.setActiveModelId);
 
   const colorScheme = useColorScheme();
+  const theme = m3[colorScheme];
+  const { pickAttachment, removeAttachment, attachment } = useAttachment();
+
+  const initModel = useLlamaStore((state) => state.initModel);
+  const isModelReady = useLlamaStore((state) => state.isModelReady);
+  const isInitializing = useLlamaStore((state) => state.isModelLoading);
+
+  const handleSelectModel = async () => {
+    try {
+      setIsLoading(true);
+      const pickedDoc = await pickAttachment();
+
+      if (pickedDoc?.status === "ready") {
+        await addLocalModel(pickedDoc);
+      }
+    } catch (error) {
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInitModel = async (modelId: string, modelUri: string) => {
+    setActiveModelId(modelId);
+    await initModel(modelUri);
+  };
+
+  console.log("Model ready?", isModelReady);
+  console.log("model id?", activeModelId);
+
   return (
     <View className="flex-1 bg-background-primary p-4">
       <Tabs.Screen
@@ -70,51 +90,50 @@ export default function Models() {
 
       {/* Model Cards */}
 
-      <FlatList
-        data={AVAILABLE_MODELS}
-        keyExtractor={(item) => item.id}
-        className="mt-4"
-        contentContainerStyle={{ paddingBottom: 40, gap: 16 }}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item: catalogModel }) => {
-          const localState = localModels.find(
-            (model) => model.id === catalogModel.id,
-          );
-
-          const ephemeralState = modelStates[catalogModel.id];
-
-          let status =
-            ephemeralState?.status || localState?.status || "not downloaded";
-          if (activeModelId === catalogModel.id) {
-            status = isModelReady ? "ready" : "initializing";
-          }
-
-          let progress =
-            ephemeralState?.progress ?? localState?.downloadProgress ?? 0;
-
+      <Pressable
+        onPress={() => handleSelectModel()}
+        className="py-4 rounded-2xl items-center justify-center flex-row active:opacity-80"
+        style={{ backgroundColor: theme.primary }}
+      >
+        <Icon name="pdf" size={20} color={theme.onPrimary} />
+        <Text
+          className="text-label-lg font-bold ml-2"
+          style={{ color: theme.onPrimary }}
+        >
+          Select Custom Model
+        </Text>
+      </Pressable>
+      {localModels &&
+        localModels.map((model) => {
           return (
-            <ModelCard
-              model={catalogModel}
-              dynamicSize={modelSizes[catalogModel.id]}
-              modelStatus={status as any}
-              isActive={activeModelId === catalogModel.id}
-              progress={progress}
-              error={null}
-              onDownload={() => downloadModel(catalogModel)}
-              onInit={() => {
-                const latestLocalState = useModelStore
-                  .getState()
-                  .localModels.find((m) => m.id === catalogModel.id);
-                if (latestLocalState) selectModel(latestLocalState);
-              }}
-              onCancel={() => cancelDownloading(catalogModel)}
-              onPause={() => pauseDownloading(catalogModel)}
-              onResume={() => resumeDownloading(catalogModel)}
-              onDelete={() => deleteDownloaded(catalogModel)}
-            />
+            <View
+              className="bg-accent-blue-container px-4 py-2 w-full rounded-sm mt-6 gap-4"
+              key={model.id}
+            >
+              <Text>{model.name}</Text>
+
+              {isModelReady && activeModelId === model.id ? (
+                <Text className="text-success text-body-md">Model Ready</Text>
+              ) : (
+                <Pressable
+                  onPress={() => handleInitModel(model.id, model.uri)}
+                  className="bg-accent-blue-bold px-2 py-1 w-1/2 rounded-2xl"
+                >
+                  {isInitializing && activeModelId === model.id ? (
+                    <View className="flex-1 items-center justify-center gap-3 px-8 bg-background-primary">
+                      <ActivityIndicator size="small" color="#000" />
+                      <Text className="text-sm text-black/50">
+                        Initializing...
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text className="text-accent-blue text-center"> Init</Text>
+                  )}
+                </Pressable>
+              )}
+            </View>
           );
-        }}
-      />
+        })}
     </View>
   );
 }

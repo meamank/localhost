@@ -1,347 +1,185 @@
-import { extractText, isAvailable } from "expo-pdf-text-extract";
-import React, { useEffect, useRef, useState } from "react";
-import { DeviceEventEmitter } from "react-native";
-import { models, useLLM, useOCR } from "react-native-executorch";
-import Toast from "react-native-toast-message";
+import { useState } from "react";
 import {
-  FINANCE_TOOLS,
   createFinanceToolHandler,
+  FINANCE_TOOLS,
 } from "../constants/FinanceTools";
-import { parseStatement } from "../constants/statementParser";
-import { useActiveModel, useModelStore } from "../store/modelStore";
+import { financeStore } from "../store/financeStore";
+import { useLlamaStore } from "../store/llamaStore";
 import { Message } from "../types";
-import { Attachment } from "./useAttachment";
-import { useFinance } from "./useFinance";
 
-export interface Summary {
-  totalTransactions: number;
-  bank: string;
-  cardLast4: string;
-  billingPeriod: string | undefined;
-  dueDate: string | undefined;
-  totalDue: number | undefined;
-}
+const STOP_WORDS = [
+  "</s>",
+  "<|end|>",
+  "<|eot_id|>",
+  "<|end_of_text|>",
+  "<|im_end|>",
+  "<|EOT|>",
+  "<|END_OF_TURN_TOKEN|>",
+  "<|end_of_turn|>",
+  "<|endoftext|>",
+];
+
+const SYSTEM_PROMPT = `You are a finance assistant. You can help the user query their logged expenses and spending summary.
+Always output your reasoning process in a <think>...</think> block before calling tools or answering the user.`;
 
 export function useChat() {
-  const activeModelId = useModelStore((state) => state.activeModelId);
+  const llamaContext = useLlamaStore((state) => state.llamaContext);
+  const isReady = useLlamaStore((state) => state.isModelReady);
 
-  const activeModel = useActiveModel();
+  const isExtractingText = false;
 
-  const attachmentMapRef = useRef<Map<number, Attachment>>(new Map());
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const [isExtractingText, setIsExtractingText] = useState(false);
-
-  //OCR
-
-  const ocr = useOCR({
-    model: models.ocr.craft({ language: "en" }),
+  const toolHandler = createFinanceToolHandler({
+    queryExpenses: financeStore.queryExpenses,
+    getSpendingSummary: financeStore.getSpendingSummary,
   });
 
-  //LLM
-  const {
-    messageHistory,
-    response,
-    isGenerating,
-    isReady,
-    sendMessage,
-    getGeneratedTokenCount,
-    getPromptTokenCount,
-    getTotalTokenCount,
-    interrupt,
-    deleteMessage,
-    configure,
-  } = useLLM({
-    preventLoad: !activeModel,
-    model: {
-      modelName: (activeModel?.id || "") as any,
-      modelSource: activeModel?.filePath
-        ? `file://${activeModel.filePath}`
-        : "",
-      tokenizerSource: activeModel?.tokenizerPath
-        ? `file://${activeModel.tokenizerPath}`
-        : "",
-      tokenizerConfigSource: activeModel?.tokenizerConfigPath
-        ? `file://${activeModel.tokenizerConfigPath}`
-        : "",
-    },
-  });
+  async function sendMessage(content: string) {
+    if (!llamaContext) return;
+    if (isGenerating) return;
+    if (!content.trim()) return;
 
-  const [syntheticMessages, setSyntheticMessages] = useState<
-    { id: string; role: "assistant"; content: string; timestamp: number }[]
-  >([]);
+    setIsGenerating(true);
 
-  const {
-    addExpense,
-    queryExpenses,
-    getSpendingSummary,
-    bulkInsertFromStatement,
-  } = useFinance();
+    const userMsg: Message = {
+      id: `User_${Date.now()}`,
+      role: "user",
+      content: content.trim(),
+      timestamp: Date.now(),
+    };
 
-  useEffect(() => {
-    if (isReady && activeModelId) {
-      const systemPrompt = `You are finance assistant. You have tools to query the database. NEVER guess data. Current date: ${new Date().toISOString().split("T")[0]}.
-RULES:
-1. specific category expenses (like "groceries") or merchant, ALWAYS use the "query_expenses" tool.
-2. to save an expense, ALWAYS use the "log_expense" tool.
-IMPORTANT: Do not answer directly if you need data. ALWAYS use a tool. Respond with exactly ONE tool call. Think briefly: decide the tool and call it.`;
+    setMessages((prev) => [...prev, userMsg]);
 
-      const financeToolHandler = createFinanceToolHandler({
-        addExpense,
-        queryExpenses,
-        getSpendingSummary,
-      });
+    // Build the raw conversation history for the model
+    const currentConversation = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+    
+    // Inject system prompt if it's a new conversation
+    if (messages.length === 0) {
+      currentConversation.unshift({ role: "system", content: SYSTEM_PROMPT });
+    }
+    
+    currentConversation.push({ role: "user", content: userMsg.content });
 
-      const configToApply: any = {
-        chatConfig: {
-          systemPrompt,
-        },
-        toolsConfig: {
-          tools: FINANCE_TOOLS,
-          executeToolCallback: financeToolHandler,
-          displayToolCalls: false,
-        },
+    try {
+      const assistantMsgId = `assistant_${Date.now()}`;
+      const assistantMsg: Message = {
+        id: assistantMsgId,
+        role: "assistant",
+        content: "",
+        timestamp: Date.now(),
+        isStreaming: true,
       };
 
-      try {
-        configure(configToApply);
-        console.log("[useChat] Configured with finance tools");
-      } catch (e) {
-        console.log(
-          "Skipping configuration, model is likely unloading or not fully loaded:",
-          e,
-        );
-      }
-    }
-  }, [
-    isReady,
-    activeModelId,
-    configure,
-    addExpense,
-    queryExpenses,
-    getSpendingSummary,
-  ]);
+      setMessages((prev) => [...prev, assistantMsg]);
 
-  // sends reply
-  const sendUserMessage = async (content: string, media?: Attachment) => {
-    if (isGenerating) return;
+      let generatedText = "";
 
-    if (media) {
-      const nextIndex = messageHistory.length;
-      attachmentMapRef.current.set(nextIndex, media);
-
-      if (media.type === "image") {
-        try {
-          setIsExtractingText(true);
-          console.log("Starting OCR Text extraction");
-
-          const detections = await ocr.forward(media.uri);
-          const extractedText = detections
-            .sort((a, b) => a.bbox.y1 - b.bbox.y1)
-            .map((d) => d.text)
-            .join(" ");
-
-          console.log("OCR Result: ", extractedText);
-          const augmentedPrompt = `[Extracted Document Text]:\n${extractedText}\n\n[User Request]:\n${content || "Log this receipt."}`;
-
-          if (!isReady) {
-            Toast.show({ type: "error", text1: "Model not ready" });
-            return;
-          }
-          await sendMessage(augmentedPrompt);
-        } catch (error) {
-          Toast.show({
-            type: "error",
-            text1: "[useChat] OCR Extraction failed",
-          });
-        } finally {
-          setIsExtractingText(false);
-        }
-      } else if (media.type === "document") {
-        try {
-          setIsExtractingText(true);
-          console.log("[useChat] Starting native PDF extraction...");
-
-          if (!isAvailable()) {
-            Toast.show({ type: "error", text1: "Platform Not supported" });
-            setIsExtractingText(false);
-            return;
-          }
-
-          const rawText = await extractText(media.uri);
-          console.log("[useChat] ====== FULL PDF RESULT START ======");
-          console.log(rawText);
-          console.log("[useChat] ====== FULL PDF RESULT END ======");
-
-          const parseResult = parseStatement(rawText);
-
-          if (parseResult.transactions.length === 0) {
-            Toast.show({
-              type: "error",
-              text1: "No transactions found in this document.",
-            });
-            setIsExtractingText(false);
-            return;
-          }
-
-          const { inserted, duplicates } = await bulkInsertFromStatement(
-            parseResult.transactions,
-            {
-              card_last4: parseResult.cardLast4,
-              bank: parseResult.bank,
-              billing_period: parseResult.billingPeriod || "",
-              due_date: parseResult.dueDate || "",
-              total_due: parseResult.totalDue || 0,
-            },
+      const result = await llamaContext.completion(
+        {
+          messages: currentConversation as any,
+          n_predict: 1024,
+          temperature: 0.7,
+          top_p: 0.9,
+          top_k: 40,
+          stop: STOP_WORDS,
+          tool_choice: "auto",
+          tools: FINANCE_TOOLS,
+        },
+        (data: { token: string }) => {
+          if (!data.token) return;
+          generatedText += data.token;
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMsgId
+                ? { ...msg, content: generatedText }
+                : msg,
+            ),
           );
+        },
+      );
 
-          let summary = {
-            totalTransactions: inserted,
-            bank: parseResult.bank,
-            cardLast4: parseResult.cardLast4,
-            billingPeriod: parseResult.billingPeriod,
-            dueDate: parseResult.dueDate,
-            totalDue: parseResult.totalDue,
-          };
+      let finalContent = generatedText;
 
-          Toast.show({
-            type: "success",
-            text1: "Import Complete",
-            text2: `${inserted} imported, ${duplicates} skipped`,
-          });
-
-          DeviceEventEmitter.emit("finance_data_updated");
-
-          setSyntheticMessages((prev) => [
-            ...prev,
-            {
-              id: `synth_${Date.now()}`,
-              role: "assistant",
-              content: JSON.stringify(summary, null, 2),
-              timestamp: Date.now(),
-            },
-          ]);
-        } catch (error) {
-          console.error("[useChat] PDF Parsing Crash:", error);
-          Toast.show({
-            type: "error",
-            text1: "Failed to process the bank statement.",
-          });
-        } finally {
-          setIsExtractingText(false);
-        }
-      } else {
-        try {
-          if (!isReady) {
-            Toast.show({ type: "error", text1: "Model not ready" });
-            return;
+      // Handle native tool calls
+      if (result?.tool_calls && result.tool_calls.length > 0) {
+        console.log("[useChat] Detected native tool calls:", result.tool_calls);
+        
+        for (const toolCall of result.tool_calls) {
+          try {
+            const res = await toolHandler({
+              toolName: toolCall.function.name,
+              arguments: typeof toolCall.function.arguments === 'string' ? JSON.parse(toolCall.function.arguments) : toolCall.function.arguments,
+            });
+            const resultStr = res || "Tool returned nothing.";
+            finalContent += `\n\n**Result from ${toolCall.function.name}:**\n${resultStr}`;
+          } catch (e) {
+            console.error("[useChat] Tool execution error:", e);
+            finalContent += `\n\n**Error executing ${toolCall.function.name}:**\n${e}`;
           }
-          await (
-            sendMessage as (
-              msg: string,
-              media?: { imagePath?: string },
-            ) => Promise<string>
-          )(content, { imagePath: media.uri });
-        } catch (error) {
-          Toast.show({ type: "error", text1: "Failed to send media to model" });
         }
       }
-    } else {
-      if (!isReady) {
-        Toast.show({ type: "error", text1: "Model not ready" });
-        return;
-      }
-      await sendMessage(content);
-    }
-  };
 
-  // stop generating reply
-  const stopGeneration = () => {
-    if (isGenerating) {
-      interrupt();
-    }
-  };
+      // Finalize the message with stats and tool results
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantMsgId
+            ? {
+                ...msg,
+                content: finalContent,
+                isStreaming: false,
+                tokensPerSecond: result?.timings.predicted_per_second,
+                input_per_second: result?.timings.prompt_per_second,
+                tokens_evaluated: result?.tokens_evaluated,
+                prompt_ms: result?.timings.prompt_ms,
+                tokens_predicted: result?.tokens_predicted,
+                predicted_ms: result?.timings.predicted_ms,
+              }
+            : msg,
+        ),
+      );
 
-  // clear chat
+      currentConversation.push({ role: "assistant", content: finalContent });
+
+    } catch (error) {
+      console.error("Chat Error", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `error_${Date.now()}`,
+          role: "assistant",
+          content: "*(Error generating response)*",
+          timestamp: Date.now(),
+        },
+      ]);
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
+  function stopGeneration() {
+    llamaContext?.stopCompletion();
+    setIsGenerating(false);
+  }
+
   function clearChat() {
     if (isGenerating) {
       stopGeneration();
     }
-    deleteMessage(0); // Deletes all messages starting from index 0
+    setMessages([]);
   }
-
-  // Returns the number of tokens generated so far in the current generation.
-
-  const generatedTokensCount = () => {
-    return getGeneratedTokenCount();
-  };
-
-  //Returns the number of prompt tokens in the last message.
-  const promptTokenCount = () => {
-    return getPromptTokenCount();
-  };
-
-  // Returns the number of total tokens from the previous generation.
-  // This is a sum of prompt tokens and generated tokens.
-
-  const totalTokenCount = () => {
-    return getTotalTokenCount();
-  };
-
-  // Message History and append streaming response
-  const baseMessages: Message[] = React.useMemo(() => {
-    const historyMsgs = messageHistory.map((msg, idx) => ({
-      id: `msg_${idx}`,
-      role: msg.role as "user" | "assistant" | "system",
-      content: msg.content,
-      timestamp: Date.now(),
-      ...(attachmentMapRef.current.has(idx)
-        ? { media: attachmentMapRef.current.get(idx) }
-        : {}),
-    }));
-
-    // Merge synthetic messages into history by timestamp logic if needed,
-    // or just append them. We'll append them for now and sort by timestamp
-    const allMsgs = [...historyMsgs, ...syntheticMessages];
-    allMsgs.sort((a, b) => a.timestamp - b.timestamp);
-
-    return allMsgs;
-  }, [messageHistory, syntheticMessages]);
-
-  const messages: Message[] = React.useMemo(() => {
-    const list = [...baseMessages];
-    if (isGenerating && response) {
-      list.push({
-        id: "streaming_response",
-        role: "assistant",
-        content: response,
-        timestamp: Date.now(),
-        isStreaming: true,
-      });
-    }
-    return list;
-  }, [baseMessages, isGenerating, response]);
-
-  useEffect(() => {
-    if (!isGenerating && response) {
-      console.log(
-        "[useChat] Final model response (after generation):",
-        JSON.stringify(response),
-      );
-    }
-  }, [isGenerating]);
 
   return {
     messages,
     isGenerating,
+    isReady,
     isExtractingText,
-    sendMessage: sendUserMessage,
+    sendMessage,
     stopGeneration,
     clearChat,
-    isReady,
-    response,
-    generatedTokensCount,
-    promptTokenCount,
-    totalTokenCount,
-    syntheticMessages,
   };
 }

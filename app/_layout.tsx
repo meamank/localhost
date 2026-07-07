@@ -16,9 +16,8 @@ import {
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
-import { initExecutorch } from "react-native-executorch";
-import { ExpoResourceFetcher } from "react-native-executorch-expo-resource-fetcher";
+import { useLlamaStore } from "@/src/store/llamaStore";
+import { useEffect, useRef } from "react";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
@@ -26,10 +25,6 @@ export {
   // Catch any errors thrown by the Layout component.
   ErrorBoundary
 } from "expo-router";
-
-initExecutorch({
-  resourceFetcher: ExpoResourceFetcher,
-});
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -62,7 +57,11 @@ function RootLayoutNav() {
 export default function RootLayout() {
   const isInitializing = useModelStore((state) => state.isInitializing);
   const initializeStore = useModelStore((state) => state.initializeStore);
-  const setModelSizes = useModelStore((state) => state.setModelSizes);
+  const activeModelId = useModelStore((state) => state.activeModelId);
+  const localModels = useModelStore((state) => state.localModels);
+  
+  const initModel = useLlamaStore((state) => state.initModel);
+  const hasAutoInitialized = useRef(false);
 
   const [loaded, error] = useFonts({
     GoogleSansFlexRound_300Light: require("@/src/assets/fonts/GoogleSansFlexRound_300Light.ttf"),
@@ -92,9 +91,18 @@ export default function RootLayout() {
   useEffect(() => {
     if (loaded && !isInitializing) {
       SplashScreen.hideAsync();
-      setModelSizes();
+      
+      // Auto-initialize the last active model on boot
+      if (!hasAutoInitialized.current && activeModelId) {
+        hasAutoInitialized.current = true;
+        const activeModel = localModels.find((m) => m.id === activeModelId);
+        if (activeModel?.uri) {
+          console.log("[Boot] Auto-initializing last active model:", activeModel.name);
+          initModel(activeModel.uri);
+        }
+      }
     }
-  }, [loaded, isInitializing]);
+  }, [loaded, isInitializing, activeModelId, localModels, initModel]);
 
   if (!loaded || isInitializing) {
     return null;

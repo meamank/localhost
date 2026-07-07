@@ -2,15 +2,8 @@ import { Attachment } from "../hooks/useAttachment";
 
 export interface ModelMeta {
   id: string;
-  org: string;
-  logo_url: string;
+
   name: string;
-  description?: string;
-  fileName: string;
-  size: number;
-  downloadUrl: string;
-  tokenizerUrl: string; // Path to tokenizer.model
-  tokenizerConfigUrl?: string; // Path to tokenizer_config.json
 }
 
 export type ModelStatus =
@@ -22,14 +15,12 @@ export type ModelStatus =
   | "ready"
   | "error";
 
-export interface LocalModel extends ModelMeta {
-  status: ModelStatus;
-  filePath: string; // Path to the .pte model file
-  tokenizerPath: string; // Path to tokenizer.model
-  tokenizerConfigPath?: string; // Path to tokenizer_config.json
-  downloadProgress?: number;
-  isFromDevice?: boolean;
-  size: number;
+export interface LocalModel {
+  id: string;
+  type: "image" | "document" | "model";
+  uri: string;
+  name?: string;
+  status: "loading" | "ready";
 }
 
 export type Message = {
@@ -41,6 +32,7 @@ export type Message = {
   tokenCount?: number;
   tokensPerSecond?: number;
   isStreaming?: boolean;
+  isHidden?: boolean;
   input_per_second?: number;
   tokens_evaluated?: number;
   prompt_ms?: number;

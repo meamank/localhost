@@ -14,10 +14,17 @@ const Row = ({ label, value }: { label: string; value: any }) => (
 );
 
 export default function ExtractedResult({
-  syntheticMessages,
+  parseResult,
   onClose,
 }: {
-  syntheticMessages: any[];
+  parseResult: {
+    totalTransactions: number;
+    bank: string;
+    cardLast4: string;
+    billingPeriod: string;
+    dueDate: string;
+    totalDue: number;
+  };
   onClose: () => void;
 }) {
   const {
@@ -27,17 +34,17 @@ export default function ExtractedResult({
     billingPeriod,
     dueDate,
     totalDue,
-  } = syntheticMessages[0].content;
+  } = parseResult;
 
   return (
     <View className="w-full">
       <Row label="Transactions" value={totalTransactions} />
       <Row label="Card" value={`${bank} •••• ${cardLast4}`} />
-      <Row label="Billing Period" value={billingPeriod} />
-      <Row label="Due Date" value={dueDate} />
-      <Row label="Total Due" value={`₹${totalDue}`} />
+      <Row label="Billing Period" value={billingPeriod || "N/A"} />
+      <Row label="Due Date" value={dueDate || "N/A"} />
+      <Row label="Total Due" value={`₹${totalDue || 0}`} />
       <Pressable
-        className="bg-accent-blue-bold px-5 py-3 self-end rounded-sm"
+        className="bg-accent-blue-bold px-5 py-3 self-end rounded-sm mt-4"
         onPress={onClose}
       >
         <Text className="text-accent-blue-surface text-label-lg">Done</Text>

@@ -1,8 +1,7 @@
-import { View, Text } from "react-native";
-import React from "react";
+import m3 from "@/src/constants/m3";
+import { Text, View } from "react-native";
 import { Icon } from "../Icon";
 import { useColorScheme } from "../useColorScheme";
-import m3 from "@/src/constants/m3";
 
 export default function CategoryCard({
   category,
@@ -23,7 +22,7 @@ export default function CategoryCard({
     "accentOrange",
     "accentRose",
   ] as const;
-  
+
   const colorKey = colorKeys[index % colorKeys.length];
 
   const surfaceColor = theme[colorKey];
@@ -38,7 +37,7 @@ export default function CategoryCard({
         borderColor: `${onColor}20`,
       }}
     >
-      <View className="flex-row items-center gap-2 mb-2">
+      <View className="flex-row items-center gap-2 ">
         <Icon name={`${category}-icon` as any} size={20} color={boldColor} />
         <Text className="font-semibold text-sm" style={{ color: onColor }}>
           {category.charAt(0).toUpperCase() + category.slice(1)}

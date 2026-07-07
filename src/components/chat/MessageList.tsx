@@ -74,12 +74,14 @@ export default function MessageList({
     [messages.length, tokensPerSecond],
   );
 
+  const visibleMessages = messages.filter((m) => !m.isHidden);
+
   return (
     <FlatList
       ref={flatListRef}
       className="flex-1"
       contentContainerStyle={{ padding: 16, flexGrow: 1 }}
-      data={messages}
+      data={visibleMessages}
       keyExtractor={(item) => item.id}
       renderItem={renderItem}
       ListEmptyComponent={EmptyChat}

@@ -1,26 +1,28 @@
-import {
-  View,
-  Text,
-  Pressable,
-  Platform,
-  ActivityIndicator,
-} from "react-native";
-import { Picker } from "@expo/ui/community/picker";
-import { useState } from "react";
+import ExtractedResult from "@/src/components/finance/ExtractedResult";
+import { Icon } from "@/src/components/Icon";
 import { useColorScheme } from "@/src/components/useColorScheme";
 import m3 from "@/src/constants/m3";
-import { Icon } from "@/src/components/Icon";
 import { useAttachment } from "@/src/hooks/useAttachment";
-import { useChat } from "@/src/hooks/useChat";
-import ExtractedResult from "@/src/components/finance/ExtractedResult";
+import { parseStatement } from "@/src/constants/statementParser";
+import { financeStore } from "@/src/store/financeStore";
+import * as PdfTextExtract from "expo-pdf-text-extract";
+import { useState } from "react";
+import Toast from "react-native-toast-message";
+import {
+  ActivityIndicator,
+  Pressable,
+  Text,
+  View
+} from "react-native";
 
 export const BANKS = ["SBI", "HDFC", "ICICI", "YES BANK"];
 
 export default function AddScreen({ onClose }: { onClose: () => void }) {
   const [bank, setBank] = useState("SBI");
-  const [isLoading, setIsLoading] = useState(false);
-  const { pickAttachment, removeAttachment, attachment } = useAttachment();
-  const { sendMessage, isExtractingText, syntheticMessages } = useChat();
+  const [isExtractingText, setIsExtractingText] = useState(false);
+  const [parseResult, setParseResult] = useState<any>(null);
+  
+  const { pickAttachment } = useAttachment();
 
   const colorScheme = useColorScheme();
   const theme = m3[colorScheme];
@@ -29,12 +31,41 @@ export default function AddScreen({ onClose }: { onClose: () => void }) {
     try {
       const pickedDoc = await pickAttachment();
 
-      if (pickedDoc?.status === "ready") {
-        await sendMessage("", pickedDoc);
+      if (pickedDoc?.status === "ready" && pickedDoc.uri) {
+        setIsExtractingText(true);
+        
+        // 1. Extract text from PDF deterministically
+        const rawText = await PdfTextExtract.extractText(pickedDoc.uri);
+        
+        // 2. Parse the text using Regex (super fast)
+        const parsed = parseStatement(rawText);
+        
+        // 3. Bulk insert directly into SQLite
+        await financeStore.bulkInsertFromStatement(parsed.transactions, {
+          bank: parsed.bank !== "UNKNOWN" ? parsed.bank : bank,
+          card_last4: parsed.cardLast4,
+          billing_period: parsed.billingPeriod || "",
+          due_date: parsed.dueDate || "",
+          total_due: parsed.totalDue || 0,
+        });
+
+        Toast.show({ type: "success", text1: `Successfully logged ${parsed.transactions.length} transactions!` });
+
+        // 4. Update state to show the result UI
+        setParseResult({
+          totalTransactions: parsed.transactions.length,
+          bank: parsed.bank !== "UNKNOWN" ? parsed.bank : bank,
+          cardLast4: parsed.cardLast4,
+          billingPeriod: parsed.billingPeriod || "",
+          dueDate: parsed.dueDate || "",
+          totalDue: parsed.totalDue || 0,
+        });
       }
     } catch (error) {
+      console.error("[AddScreen] Failed to parse PDF:", error);
+      Toast.show({ type: "error", text1: "Failed to parse PDF statement." });
     } finally {
-      setIsLoading(false);
+      setIsExtractingText(false);
     }
   };
 
@@ -42,18 +73,20 @@ export default function AddScreen({ onClose }: { onClose: () => void }) {
     return (
       <View className="flex-1 items-center justify-center gap-3 px-8 bg-background-surface">
         <ActivityIndicator size="large" color={theme.primary} />
-        <Text className="text-sm text-white/50">Extracting text…</Text>
+        <Text className="text-sm text-white/50">Extracting and parsing text…</Text>
       </View>
     );
   }
 
-  if (syntheticMessages?.length) {
-    console.log(syntheticMessages[0].content);
+  if (parseResult) {
     return (
       <View className="w-full px-6 pb-8 pt-2">
         <ExtractedResult
-          syntheticMessages={syntheticMessages}
-          onClose={onClose}
+          parseResult={parseResult}
+          onClose={() => {
+            setParseResult(null);
+            onClose();
+          }}
         />
       </View>
     );
@@ -61,11 +94,12 @@ export default function AddScreen({ onClose }: { onClose: () => void }) {
 
   return (
     <View className="w-full px-6 pb-8 pt-2">
+      <Icon name="attachment" size={24} />
       <Text
         className="text-title-lg font-semibold mb-6 text-center"
         style={{ color: theme.onSurface }}
       >
-        Upload Statements
+        Add Statements
       </Text>
 
       <View className="mb-8">
@@ -99,7 +133,7 @@ export default function AddScreen({ onClose }: { onClose: () => void }) {
       </View>
 
       <Pressable
-        onPress={() => handleUploadPdf()}
+        onPress={handleUploadPdf}
         className="py-4 rounded-2xl items-center justify-center flex-row active:opacity-80"
         style={{ backgroundColor: theme.primary }}
       >

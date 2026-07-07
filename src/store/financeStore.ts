@@ -360,7 +360,7 @@ export const financeStore = {
       let cat = filters.category.toLowerCase();
       if (cat.endsWith("ies")) cat = cat.slice(0, -3);
       else if (cat.endsWith("s")) cat = cat.slice(0, -1);
-      
+
       conditions.push("category LIKE ?");
       params.push(`%${cat}%`);
     }

@@ -1,10 +1,9 @@
 import iconColors from "@/src/constants/IconColors";
 import React, { useState } from "react";
-import { Alert, Image, Linking, Text, View, Pressable } from "react-native";
+import { Alert, Image, Linking, Pressable, Text, View } from "react-native";
 import type { MarkdownStyle } from "react-native-enriched-markdown";
 import { StreamdownText } from "react-native-streamdown";
 import { Message } from "../../types";
-import { useColorScheme } from "../useColorScheme";
 import { Icon } from "../Icon";
 
 interface MessageBubbleProps {
@@ -23,7 +22,7 @@ const MessageBubble = React.memo(function MessageBubble({
   const isUser = message.role === "user";
   const [isThoughtExpanded, setIsThoughtExpanded] = useState(false);
 
-  const colorScheme = useColorScheme() === "dark" ? "dark" : "light";
+  const colorScheme = "light";
 
   const c = iconColors[colorScheme];
 
@@ -78,7 +77,7 @@ const MessageBubble = React.memo(function MessageBubble({
     ]);
   };
 
-  console.log("inbubble:", message);
+  console.log(message);
 
   return (
     <View
@@ -123,36 +122,86 @@ const MessageBubble = React.memo(function MessageBubble({
               if (typeof displayContent !== "string") {
                 displayContent = JSON.stringify(displayContent, null, 2);
               }
-              
+
               let thoughtContent = null;
               let mainContent = displayContent;
-              
-              const thinkStart = displayContent.indexOf("<think>");
-              if (thinkStart !== -1) {
-                const thinkEnd = displayContent.indexOf("</think>");
-                if (thinkEnd !== -1) {
-                  thoughtContent = displayContent.substring(thinkStart + 7, thinkEnd).trim();
-                  mainContent = displayContent.substring(0, thinkStart) + displayContent.substring(thinkEnd + 9);
-                } else {
-                  thoughtContent = displayContent.substring(thinkStart + 7).trim();
-                  mainContent = displayContent.substring(0, thinkStart);
+
+              // 1. Extract and hide <tool_call>...</tool_call> and <|tool_call|>... blocks using regex
+              mainContent = mainContent.replace(
+                /<\|?tool_call\|?>[\s\S]*?(<\|?\/tool_call\|?>|$)/gi,
+                "",
+              );
+
+              // Also strip raw JSON block if wrapped in ```json
+              mainContent = mainContent.replace(/```json[\s\S]*?```/gi, "");
+
+              // Also strip raw {"name": "query_expenses"...} if it leaked
+              const jsonToolStart = mainContent.indexOf('{"name"');
+              if (jsonToolStart !== -1 && mainContent.includes("}")) {
+                const jsonToolEnd = mainContent.lastIndexOf("}");
+                if (jsonToolEnd > jsonToolStart) {
+                  mainContent =
+                    mainContent.substring(0, jsonToolStart) +
+                    mainContent.substring(jsonToolEnd + 1);
                 }
               }
-              
-              let trimmedMain = mainContent.trim();
-              const isToolCall =
-                trimmedMain.includes('{"name":') ||
-                trimmedMain.includes('{"name"') ||
-                trimmedMain.startsWith("respond{") ||
-                trimmedMain.includes('"query_expenses"') ||
-                trimmedMain.includes('"get_spending_summary"') ||
-                trimmedMain.includes('"log_expense"');
 
-              const isThinkingActive = isStreaming && thinkStart !== -1 && !displayContent.includes("</think>");
+              // 2. Extract <think> blocks (Aggressively route everything to thought box until </think> is seen)
+              const lowerMain = mainContent.toLowerCase();
+              const closingThinkIndex = lowerMain.indexOf("</think>");
+
+              if (closingThinkIndex !== -1) {
+                // Found </think>! Everything before is thought, everything after is main response.
+                let rawThought = mainContent.substring(0, closingThinkIndex);
+                const openingThinkIndex = rawThought
+                  .toLowerCase()
+                  .indexOf("<think>");
+                if (openingThinkIndex !== -1) {
+                  rawThought = rawThought.substring(openingThinkIndex + 7);
+                }
+                thoughtContent = rawThought.trim();
+                mainContent = mainContent
+                  .substring(closingThinkIndex + 8)
+                  .trim();
+              } else if (isStreaming) {
+                // Streaming but haven't seen </think> yet -> Put EVERYTHING in thought box!
+                let rawThought = mainContent;
+                const openingThinkIndex = rawThought
+                  .toLowerCase()
+                  .indexOf("<think>");
+                if (openingThinkIndex !== -1) {
+                  rawThought = rawThought.substring(openingThinkIndex + 7);
+                }
+                thoughtContent = rawThought.trim();
+                mainContent = ""; // Hide from main chat until </think> appears
+              } else {
+                // Finished streaming and NEVER saw </think>.
+                // Check if there's an opening <think> tag at least.
+                const openingThinkIndex = lowerMain.indexOf("<think>");
+                if (openingThinkIndex !== -1) {
+                  thoughtContent = mainContent
+                    .substring(openingThinkIndex + 7)
+                    .trim();
+                  mainContent = mainContent
+                    .substring(0, openingThinkIndex)
+                    .trim();
+                } else if (mainContent.includes("**Result from")) {
+                  // Special fallback: It forgot BOTH tags, but output a tool result.
+                  // Everything before the tool result is the thought process!
+                  const resultIndex = mainContent.indexOf("**Result from");
+                  thoughtContent = mainContent.substring(0, resultIndex).trim();
+                  mainContent = mainContent.substring(resultIndex).trim();
+                }
+              }
+
+              let trimmedMain = mainContent.trim();
+              const isThinkingActive =
+                isStreaming &&
+                thoughtContent !== null &&
+                !displayContent.toLowerCase().includes("</think>");
 
               // Prevent catastrophic regex backtracking in streamdown by wrapping raw JSON in code blocks
               if (
-                !isToolCall &&
                 (trimmedMain.startsWith("{") || trimmedMain.startsWith("[")) &&
                 !trimmedMain.includes("```")
               ) {
@@ -162,15 +211,21 @@ const MessageBubble = React.memo(function MessageBubble({
               return (
                 <>
                   {thoughtContent !== null && (
-                    <View className="mb-2 bg-background-tertiary rounded-lg border border-border overflow-hidden min-w-[200px]">
+                    <View className="mb-2 bg-background-tertiary rounded-lg border border-border overflow-hidden min-w-50">
                       <Pressable
                         className="flex-row items-center justify-between p-3"
                         onPress={() => setIsThoughtExpanded(!isThoughtExpanded)}
                       >
                         <Text className="text-foreground-secondary font-medium text-sm">
-                          {isThinkingActive ? "● Thinking..." : "Thought Process"}
+                          {isThinkingActive
+                            ? "● Thinking..."
+                            : "Thought Process"}
                         </Text>
-                        <Icon name={isThoughtExpanded ? "chevron-up" : "chevron-down"} size={20} color={c.secondary} />
+                        <Icon
+                          name={isThoughtExpanded ? "debit" : "credit"}
+                          size={20}
+                          color={c.secondary}
+                        />
                       </Pressable>
                       {isThoughtExpanded && (
                         <View className="p-3 pt-0 border-t border-border mt-2">
@@ -182,15 +237,9 @@ const MessageBubble = React.memo(function MessageBubble({
                     </View>
                   )}
 
-                  {isStreaming && isToolCall && (
-                    <Text className="mt-2 text-xs font-medium text-foreground-primary animate-pulse">
-                      ● Querying database...
-                    </Text>
-                  )}
-
-                  {!isToolCall && trimmedMain ? (
+                  {trimmedMain ? (
                     <>
-                      {isStreaming && !isThinkingActive && !isToolCall && (
+                      {isStreaming && !isThinkingActive && (
                         <Text className="mt-2 text-xs font-medium text-foreground-primary">
                           ● Streaming...
                         </Text>
@@ -200,7 +249,9 @@ const MessageBubble = React.memo(function MessageBubble({
                         markdown={trimmedMain}
                         onLinkPress={({ url }) => handleLinkPress(url)}
                         markdownStyle={
-                          colorScheme === "dark" ? darkMarkdownStyle : lightMarkdownStyle
+                          colorScheme === "light"
+                            ? darkMarkdownStyle
+                            : lightMarkdownStyle
                         }
                       />
                     </>

@@ -4,7 +4,7 @@ import Toast from "react-native-toast-message";
 
 export interface Attachment {
   id: string;
-  type: "image" | "document";
+  type: "image" | "document" | "model";
   uri: string;
   name?: string;
   status: "loading" | "ready";
@@ -26,15 +26,19 @@ export const useAttachment = () => {
   const attachmentRef = useRef<Attachment>(null);
   attachmentRef.current = attachment;
 
-  const getFileType = (extension: string): "image" | "document" => {
-    return IMAGE_EXTENSIONS.includes(extension.toLowerCase())
-      ? "image"
-      : "document";
+  const getFileType = (extension: string): "image" | "document" | "model" => {
+    if (IMAGE_EXTENSIONS.includes(extension.toLowerCase())) {
+      return "image";
+    } else if (extension.toLowerCase() === "gguf") {
+      return "model";
+    } else {
+      return "document";
+    }
   };
 
   const pickAttachment = async () => {
     const fileResult = await DocumentPicker.getDocumentAsync({
-      type: ["application/pdf"],
+      type: ["*/*"],
       copyToCacheDirectory: true,
     });
 

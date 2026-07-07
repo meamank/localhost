@@ -14,14 +14,14 @@ import {
   Text,
   View,
 } from "react-native";
-import { AnimatedRollingNumber } from "react-native-animated-rolling-numbers";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import CategoryCard from "@/src/components/finance/CategoryCard";
+import Empty from "@/src/components/home/Empty";
+import Spacer from "@/src/components/home/Spacer";
 import { Icon } from "@/src/components/Icon";
 import { useColorScheme } from "@/src/components/useColorScheme";
 import { extractDateDetails } from "@/src/constants/helpers";
-import m3 from "@/src/constants/m3";
 import { getUniqueStatements } from "@/src/constants/statementUtils";
 
 export default function Home() {
@@ -117,38 +117,35 @@ export default function Home() {
 
   const renderHeader = useCallback(
     () => (
-      <View className="mb-6">
-        <View className="py-8 rounded-3xl mb-6 items-center bg-surface-container-high border border-outline-variant shadow-sm">
-          <Text className="text-on-surface-variant text-title-md font-bold mb-2 uppercase tracking-widest">
+      <View>
+        <View className="py-8 rounded-3xl mb-6 items-center">
+          <Text className="text-on-surface-variant text-title-sm font-bold mb-2 uppercase tracking-widest">
             Total Due
           </Text>
 
-          <AnimatedRollingNumber
-            value={totalSpending}
-            useGrouping
-            textStyle={{
-              color: m3[colorScheme].primary,
-              fontFamily: "GoogleSansFlexRound_700Bold",
-              fontSize: 42,
-            }}
-          />
+          <Text className="text-primary text-display-md font-bold tracking-widest">
+            ₹{totalSpending}
+          </Text>
         </View>
-        {statements.length > 0 && (
+
+        {/* CARDS */}
+        <View className="flex-row justify-between items-center mb-2">
+          <Text className="text-foreground-secondary font-display text-title-sm font-bold tracking-wide">
+            Cards
+          </Text>
+          <View className="flex-row items-center gap-2">
+            <Text className="text-title-sm">View All</Text>
+            <Pressable
+              onPress={() => router.push("/cardHub")}
+              className="bg-accent-blue-container p-1 rounded-full"
+            >
+              <Icon name="chevron-right" size={18} />
+            </Pressable>
+          </View>
+        </View>
+
+        {statements.length > 0 ? (
           <>
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-foreground-primary font-bold text-lg">
-                Cards
-              </Text>
-              <View className="flex-row items-center gap-2">
-                <Text className="text-title-sm">View All</Text>
-                <Pressable
-                  onPress={() => router.push("/cardHub")}
-                  className="bg-accent-blue-container p-1 rounded-full"
-                >
-                  <Icon name="chevron-right" size={24} />
-                </Pressable>
-              </View>
-            </View>
             <View className="mb-4 gap-3">
               <FlatList
                 data={headerList}
@@ -165,36 +162,46 @@ export default function Home() {
               />
             </View>
           </>
+        ) : (
+          <Empty title="cards" />
         )}
 
-        <Text className="text-on-surface-variant font-bold text-lg mt-2 mb-2">
+        <Spacer />
+
+        <Text className="text-foreground-secondary font-display text-title-sm font-bold tracking-wide mb-2">
           Categories
         </Text>
-        <View className="flex-row flex-wrap justify-between gap-y-4 mb-6">
-          {Object.entries(categoryData)
-            .sort(([catA, amtA], [catB, amtB]) => {
-              if (catA === "other") return 1;
-              if (catB === "other") return -1;
-              return amtB - amtA;
-            })
-            .map(([category, amount], index) => (
-              // <ChartBar
-              //   key={category}
-              //   width={(amount / totalSpending) * 100}
-              //   label={category}
-              //   index={index}
-              // />
-              <View key={category} style={{ width: "48%" }}>
-                <CategoryCard
-                  category={category}
-                  amount={amount}
-                  index={index}
-                />
-              </View>
-            ))}
+        <View className="flex-row flex-wrap justify-between gap-y-4">
+          {Object.keys(categoryData).length > 0 ? (
+            Object.entries(categoryData)
+              .sort(([catA, amtA], [catB, amtB]) => {
+                if (catA === "other") return 1;
+                if (catB === "other") return -1;
+                return amtB - amtA;
+              })
+              .map(([category, amount], index) => (
+                // <ChartBar
+                //   key={category}
+                //   width={(amount / totalSpending) * 100}
+                //   label={category}
+                //   index={index}
+                // />
+                <View key={category} style={{ width: "48%" }}>
+                  <CategoryCard
+                    category={category}
+                    amount={amount}
+                    index={index}
+                  />
+                </View>
+              ))
+          ) : (
+            <Empty title="categories" />
+          )}
         </View>
 
-        <Text className="text-on-surface-variant font-bold text-lg mt-2 mb-2">
+        <Spacer />
+
+        <Text className="text-foreground-secondary font-display text-title-sm font-bold tracking-wide mb-2">
           Recent Transactions
         </Text>
       </View>
@@ -219,6 +226,7 @@ export default function Home() {
         }}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderTransactionItem}
+        ListEmptyComponent={<Empty title="transactions" />}
       />
     </View>
   );

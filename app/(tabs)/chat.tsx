@@ -7,11 +7,24 @@ import iconColors from "@/src/constants/IconColors";
 import { useAttachment } from "@/src/hooks/useAttachment";
 import { useChat } from "@/src/hooks/useChat";
 import { useModelStore } from "@/src/store/modelStore";
+import { useLlamaStore } from "@/src/store/llamaStore";
 import { Stack } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { KeyboardStickyView } from "react-native-keyboard-controller";
+
 export default function ChatScreen() {
+  const { pickAttachment, attachment, removeAttachment } = useAttachment();
+
+  const isInitializing = useModelStore((state) => state.isInitializing);
+  const activeModelId = useModelStore((state) => state.activeModelId);
+  const localModels = useModelStore((state) => state.localModels);
+
+  const colorScheme = useColorScheme();
+
+  const activeModel = localModels.find((model) => model.id === activeModelId);
+  const activeModelName = activeModel?.name || "Nirvah";
+
   const {
     messages,
     isGenerating,
@@ -19,45 +32,12 @@ export default function ChatScreen() {
     sendMessage,
     clearChat,
     stopGeneration,
-    response,
-    generatedTokensCount,
-    promptTokenCount,
-    totalTokenCount,
     isExtractingText,
   } = useChat();
-  const { pickAttachment, attachment, removeAttachment } = useAttachment();
-
-  const isInitializing = useModelStore((state) => state.isInitializing);
-  const activeModelId = useModelStore((state) => state.activeModelId);
-  const localModels = useModelStore((state) => state.localModels);
-  const setIsModelReady = useModelStore((state) => state.setIsModelReady);
-
-  const colorScheme = useColorScheme();
 
   const [tokensPerSecond, setTokensPerSecond] = useState(0);
-  const generationStartTimeRef = useRef(0);
 
-  const activeModel = localModels.find((model) => model.id === activeModelId);
-  const activeModelName = activeModel?.name || "Nirvah";
-
-  useEffect(() => {
-    setIsModelReady(isReady);
-  }, [isReady, setIsModelReady]);
-
-  useEffect(() => {
-    if (isGenerating) {
-      generationStartTimeRef.current = performance.now();
-      setTokensPerSecond(0);
-    } else if (generationStartTimeRef.current > 0) {
-      const elapsed =
-        (performance.now() - generationStartTimeRef.current) / 1000;
-      const tokens = generatedTokensCount();
-      if (elapsed > 0 && tokens > 0) {
-        setTokensPerSecond(Math.round(tokens / elapsed));
-      }
-      generationStartTimeRef.current = 0;
-    }
-  }, [isGenerating]);
+  const isModelLoading = useLlamaStore((state) => state.isModelLoading);
 
   const stackOptions = useMemo(
     () => ({
@@ -78,11 +58,26 @@ export default function ChatScreen() {
     [activeModelName, activeModelId, colorScheme],
   );
 
-  if (isInitializing) {
+  if (isInitializing || isModelLoading) {
     return (
       <View className="flex-1 items-center justify-center gap-3 px-8 bg-background-primary">
         <ActivityIndicator size="large" color="#fff" />
-        <Text className="text-sm text-white/50">Loading model…</Text>
+        <Text className="text-sm text-white/50">Loading model into memory…</Text>
+      </View>
+    );
+  }
+
+  if (!isReady) {
+    return (
+      <View className="flex-1 bg-background-primary">
+        <Stack.Screen options={stackOptions} />
+        <View className="flex-1 items-center justify-center gap-3 px-8">
+          <Icon name="models-tab" size={48} color={iconColors[colorScheme].primary} />
+          <Text className="text-lg font-bold text-foreground-primary">No Model Active</Text>
+          <Text className="text-sm text-center text-foreground-secondary">
+            Go to the Models tab to select and initialize a model.
+          </Text>
+        </View>
       </View>
     );
   }
