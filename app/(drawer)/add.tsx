@@ -2,26 +2,21 @@ import ExtractedResult from "@/src/components/finance/ExtractedResult";
 import { Icon } from "@/src/components/Icon";
 import { useColorScheme } from "@/src/components/useColorScheme";
 import m3 from "@/src/constants/m3";
-import { useAttachment } from "@/src/hooks/useAttachment";
 import { parseStatement } from "@/src/constants/statementParser";
+import { useAttachment } from "@/src/hooks/useAttachment";
 import { financeStore } from "@/src/store/financeStore";
 import * as PdfTextExtract from "expo-pdf-text-extract";
 import { useState } from "react";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import Toast from "react-native-toast-message";
-import {
-  ActivityIndicator,
-  Pressable,
-  Text,
-  View
-} from "react-native";
 
-export const BANKS = ["SBI", "HDFC", "ICICI", "YES BANK"];
+const BANKS = ["SBI", "HDFC", "ICICI", "YES BANK"];
 
 export default function AddScreen({ onClose }: { onClose: () => void }) {
   const [bank, setBank] = useState("SBI");
   const [isExtractingText, setIsExtractingText] = useState(false);
   const [parseResult, setParseResult] = useState<any>(null);
-  
+
   const { pickAttachment } = useAttachment();
 
   const colorScheme = useColorScheme();
@@ -33,13 +28,13 @@ export default function AddScreen({ onClose }: { onClose: () => void }) {
 
       if (pickedDoc?.status === "ready" && pickedDoc.uri) {
         setIsExtractingText(true);
-        
+
         // 1. Extract text from PDF deterministically
         const rawText = await PdfTextExtract.extractText(pickedDoc.uri);
-        
+
         // 2. Parse the text using Regex (super fast)
         const parsed = parseStatement(rawText);
-        
+
         // 3. Bulk insert directly into SQLite
         await financeStore.bulkInsertFromStatement(parsed.transactions, {
           bank: parsed.bank !== "UNKNOWN" ? parsed.bank : bank,
@@ -49,7 +44,10 @@ export default function AddScreen({ onClose }: { onClose: () => void }) {
           total_due: parsed.totalDue || 0,
         });
 
-        Toast.show({ type: "success", text1: `Successfully logged ${parsed.transactions.length} transactions!` });
+        Toast.show({
+          type: "success",
+          text1: `Successfully logged ${parsed.transactions.length} transactions!`,
+        });
 
         // 4. Update state to show the result UI
         setParseResult({
@@ -73,7 +71,9 @@ export default function AddScreen({ onClose }: { onClose: () => void }) {
     return (
       <View className="flex-1 items-center justify-center gap-3 px-8 bg-background-surface">
         <ActivityIndicator size="large" color={theme.primary} />
-        <Text className="text-sm text-white/50">Extracting and parsing text…</Text>
+        <Text className="text-sm text-white/50">
+          Extracting and parsing text…
+        </Text>
       </View>
     );
   }
@@ -93,10 +93,17 @@ export default function AddScreen({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <View className="w-full px-6 pb-8 pt-2">
-      <Icon name="attachment" size={24} />
+    <View className="flex w-full px-6 pb-8 pt-2 items-center gap-2">
+      <View className="bg-primary-container p-2 rounded-sm">
+        <Icon
+          name="attachment"
+          size={24}
+          color={m3[colorScheme].onPrimaryContainer}
+        />
+      </View>
+
       <Text
-        className="text-title-lg font-semibold mb-6 text-center"
+        className="text-title-md font-semibold mb-6 text-center"
         style={{ color: theme.onSurface }}
       >
         Add Statements
@@ -134,7 +141,7 @@ export default function AddScreen({ onClose }: { onClose: () => void }) {
 
       <Pressable
         onPress={handleUploadPdf}
-        className="py-4 rounded-2xl items-center justify-center flex-row active:opacity-80"
+        className="py-4 rounded-2xl w-full justify-center flex-row active:opacity-80"
         style={{ backgroundColor: theme.primary }}
       >
         <Icon name="pdf" size={20} color={theme.onPrimary} />

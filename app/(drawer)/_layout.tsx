@@ -16,9 +16,12 @@ export default function TabLayout() {
   const bottomSheetRef = useRef<BottomSheet>(null);
 
   useEffect(() => {
-    const subscription = DeviceEventEmitter.addListener("open_add_sheet", () => {
-      bottomSheetRef.current?.snapToIndex(0);
-    });
+    const subscription = DeviceEventEmitter.addListener(
+      "open_add_sheet",
+      () => {
+        bottomSheetRef.current?.snapToIndex(0);
+      },
+    );
     return () => subscription.remove();
   }, []);
 
@@ -47,11 +50,7 @@ export default function TabLayout() {
                 onPress={() => bottomSheetRef.current?.snapToIndex(0)}
                 style={{ paddingRight: 16 }}
               >
-                <Icon
-                  name="plus"
-                  size={28}
-                  color={m3[colorScheme].primary}
-                />
+                <Icon name="plus" size={28} color={m3[colorScheme].primary} />
               </Pressable>
               <Pressable
                 onPress={() => console.log("Icon pressed!")}
@@ -70,12 +69,26 @@ export default function TabLayout() {
         <Drawer.Screen
           name="index"
           options={{
-            title: "LocalHost",
+            drawerLabel: "Home",
+            headerShown: false,
+            drawerIcon: ({ color, focused }) => (
+              <Icon
+                name={focused ? "home-active" : "home-inactive"}
+                size={24}
+                color={color}
+              />
+            ),
+          }}
+        />
+        <Drawer.Screen
+          name="finance"
+          options={{
+            title: "Finance",
             headerTitleStyle: {
               fontFamily: "GoogleSansFlexRound_600SemiBold",
               fontSize: 24,
             },
-            drawerLabel: "Home",
+            drawerLabel: "Finance",
             headerStyle: {
               backgroundColor: "transparent",
             },
@@ -83,11 +96,7 @@ export default function TabLayout() {
             headerTransparent: true,
             headerShadowVisible: false,
             drawerIcon: ({ color, focused }) => (
-              <Icon
-                name={focused ? "home-active" : "home-inactive"}
-                size={24}
-                color={color}
-              />
+              <Icon name={"rupee-symbol"} size={24} color={color} />
             ),
           }}
         />
@@ -107,7 +116,7 @@ export default function TabLayout() {
         <Drawer.Screen
           name="add"
           options={{
-            drawerItemStyle: { display: 'none' }, // Hide add screen from drawer, accessible via header + button
+            drawerItemStyle: { display: "none" }, // Hide add screen from drawer, accessible via header + button
           }}
         />
         <Drawer.Screen
@@ -115,11 +124,7 @@ export default function TabLayout() {
           options={{
             drawerLabel: "Models",
             drawerIcon: ({ color, focused }) => (
-              <Icon
-                name="models-tab"
-                size={24}
-                color={color}
-              />
+              <Icon name="models-tab" size={24} color={color} />
             ),
           }}
         />

@@ -8,7 +8,7 @@ import { useAttachment } from "@/src/hooks/useAttachment";
 import { useChat } from "@/src/hooks/useChat";
 import { useLlamaStore } from "@/src/store/llamaStore";
 import { useModelStore } from "@/src/store/modelStore";
-import { Stack } from "expo-router";
+import { Stack, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { KeyboardStickyView } from "react-native-keyboard-controller";
@@ -25,6 +25,8 @@ export default function ChatScreen() {
   const activeModel = localModels.find((model) => model.id === activeModelId);
   const activeModelName = activeModel?.name || "Nirvah";
 
+  const { context } = useLocalSearchParams<{ context: string }>();
+
   const {
     messages,
     isGenerating,
@@ -33,7 +35,7 @@ export default function ChatScreen() {
     clearChat,
     stopGeneration,
     isExtractingText,
-  } = useChat();
+  } = useChat({ context });
 
   const [tokensPerSecond, setTokensPerSecond] = useState(0);
 
