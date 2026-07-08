@@ -8,7 +8,7 @@ export default function BankCard({
   size,
 }: {
   statement: StatementMetadata;
-  size?: "full" | "half";
+  size?: "full" | "carousel";
 }) {
   if (!statement) return null;
 
@@ -32,17 +32,21 @@ export default function BankCard({
   const normalizedBank = statement.bank.toLowerCase().trim();
   const bankIcon = iconMap[normalizedBank] || "chip";
 
+  let containerClass = "bg-background border-[3px] border-primary rounded-md justify-between";
+  if (size === "carousel") containerClass += " w-[42vw] h-32 p-3";
+  else containerClass += " w-7/10 h-40 p-5 mb-2";
+
   return (
     <Pressable
       onPress={() => router.push(`/${statement.bank}_${statement.card_last4}`)}
-      className={`${size === "half" ? "w-[48%] h-30 p-3" : "w-7/10 h-40 p-5"} bg-background border-[3px] border-primary rounded-md justify-between mb-2`}
+      className={containerClass}
     >
       <View className="flex-row justify-between items-center">
         <View className="flex-row items-center gap-3">
-          <Icon name={bankIcon as any} size={size === "half" ? 24 : 28} />
+          <Icon name={bankIcon as any} size={size === "carousel" ? 24 : 28} />
           <View>
             <Text
-              className={`text-on-background font-sans font-bold ${size === "half" ? "text-title-sm" : "text-title-md"}  uppercase`}
+              className={`text-on-background font-sans font-bold ${size === "carousel" ? "text-title-sm" : "text-title-md"} uppercase`}
             >
               {statement.bank}
             </Text>
@@ -59,7 +63,7 @@ export default function BankCard({
             Total Due
           </Text>
           <Text
-            className={`text-primary font-sans font-bold ${size === "half" ? "text-title-md" : "text-exp-title-sm"}`}
+            className={`text-primary font-sans font-bold ${size === "carousel" ? "text-title-md" : "text-exp-title-sm"}`}
           >
             ₹
             {statement.total_due.toLocaleString("en-IN", {

@@ -3,6 +3,10 @@ import {
   createFinanceToolHandler,
   FINANCE_TOOLS,
 } from "../constants/FinanceTools";
+import {
+  createGeneralToolHandler,
+  GENERAL_TOOLS,
+} from "../constants/GeneralTools";
 import { financeStore } from "../store/financeStore";
 import { useLlamaStore } from "../store/llamaStore";
 import { Message } from "../types";
@@ -20,6 +24,7 @@ const STOP_WORDS = [
 ];
 
 const GENERAL_SYSTEM_PROMPT = `You are a helpful general assistant. You can chat with the user, answer questions, and assist with any tasks.
+You have access to a web search tool. Use it whenever the user asks for up-to-date information, news, or facts you are unsure about.
 Always output your reasoning process in a <think>...</think> block before answering.`;
 
 const FINANCE_SYSTEM_PROMPT = `You are a finance assistant. You can help the user query their logged expenses and spending summary.
@@ -51,6 +56,10 @@ export function useChat(options?: UseChatOptions) {
       queryExpenses: financeStore.queryExpenses,
       getSpendingSummary: financeStore.getSpendingSummary,
     });
+  } else if (ctx === "general") {
+    currentSystemPrompt = GENERAL_SYSTEM_PROMPT;
+    currentTools = GENERAL_TOOLS;
+    currentToolHandler = createGeneralToolHandler();
   } else if (ctx === "summary") {
     currentSystemPrompt = SUMMARY_SYSTEM_PROMPT;
   }

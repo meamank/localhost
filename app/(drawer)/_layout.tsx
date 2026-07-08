@@ -69,26 +69,12 @@ export default function TabLayout() {
         <Drawer.Screen
           name="index"
           options={{
-            drawerLabel: "Home",
-            headerShown: false,
-            drawerIcon: ({ color, focused }) => (
-              <Icon
-                name={focused ? "home-active" : "home-inactive"}
-                size={24}
-                color={color}
-              />
-            ),
-          }}
-        />
-        <Drawer.Screen
-          name="finance"
-          options={{
-            title: "Finance",
+            title: "LocalHost",
             headerTitleStyle: {
               fontFamily: "GoogleSansFlexRound_600SemiBold",
               fontSize: 24,
             },
-            drawerLabel: "Finance",
+            drawerLabel: "Home",
             headerStyle: {
               backgroundColor: "transparent",
             },
