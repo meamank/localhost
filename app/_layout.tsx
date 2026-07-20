@@ -4,6 +4,8 @@ import { useModelStore } from "@/src/store/modelStore";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import AppToast from "@/src/components/ToastConfig";
+import { useLlamaStore } from "@/src/store/llamaStore";
 import {
   Montserrat_400Regular,
   Montserrat_500Medium,
@@ -16,11 +18,14 @@ import {
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useLlamaStore } from "@/src/store/llamaStore";
 import { useEffect, useRef } from "react";
+import { Appearance } from "react-native";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import "react-native-reanimated";
-import Toast from "react-native-toast-message";
+
+// Force light mode globally
+Appearance.setColorScheme("light");
+
 export {
   // Catch any errors thrown by the Layout component.
   ErrorBoundary
@@ -45,11 +50,11 @@ function RootLayoutNav() {
               <Stack.Screen name="cardHub" options={{ headerShown: false }} />
             </Stack>
 
-            <StatusBar style="auto" />
+            <StatusBar style="dark" />
           </ThemeProvider>
         </KeyboardProvider>
       </SafeAreaProvider>
-      <Toast />
+      <AppToast />
     </GestureHandlerRootView>
   );
 }
@@ -59,7 +64,7 @@ export default function RootLayout() {
   const initializeStore = useModelStore((state) => state.initializeStore);
   const activeModelId = useModelStore((state) => state.activeModelId);
   const localModels = useModelStore((state) => state.localModels);
-  
+
   const initModel = useLlamaStore((state) => state.initModel);
   const hasAutoInitialized = useRef(false);
 
@@ -91,13 +96,16 @@ export default function RootLayout() {
   useEffect(() => {
     if (loaded && !isInitializing) {
       SplashScreen.hideAsync();
-      
+
       // Auto-initialize the last active model on boot
       if (!hasAutoInitialized.current && activeModelId) {
         hasAutoInitialized.current = true;
         const activeModel = localModels.find((m) => m.id === activeModelId);
         if (activeModel?.uri) {
-          console.log("[Boot] Auto-initializing last active model:", activeModel.name);
+          console.log(
+            "[Boot] Auto-initializing last active model:",
+            activeModel.name,
+          );
           initModel(activeModel.uri);
         }
       }

@@ -67,15 +67,21 @@ export const useAttachment = () => {
         return newAttachment;
       } else {
         Toast.show({
-          type: "info",
+          type: "custom",
           text1: "Failed to process document.",
+          props: {
+            type: "error",
+          },
         });
         return null;
       }
     } catch (error) {
       Toast.show({
-        type: "info",
+        type: "custom",
         text1: "Error reading document.",
+        props: {
+          type: "error",
+        },
       });
       return null;
     }

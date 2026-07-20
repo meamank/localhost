@@ -1,29 +1,19 @@
 import "@/global.css";
 import { Icon } from "@/src/components/Icon";
 import BottomSheet, { BottomSheetView } from "@expo/ui/community/bottom-sheet";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 
 import { useClientOnlyValue } from "@/src/components/useClientOnlyValue";
 import { useColorScheme } from "@/src/components/useColorScheme";
 import m3 from "@/src/constants/m3";
 import { Drawer } from "expo-router/drawer";
-import { DeviceEventEmitter, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import AddScreen from "./add";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const headerColor = colorScheme === "light" ? "#ffffff" : "#212121";
   const bottomSheetRef = useRef<BottomSheet>(null);
-
-  useEffect(() => {
-    const subscription = DeviceEventEmitter.addListener(
-      "open_add_sheet",
-      () => {
-        bottomSheetRef.current?.snapToIndex(0);
-      },
-    );
-    return () => subscription.remove();
-  }, []);
 
   return (
     <>
@@ -82,7 +72,11 @@ export default function TabLayout() {
             headerTransparent: true,
             headerShadowVisible: false,
             drawerIcon: ({ color, focused }) => (
-              <Icon name={"rupee-symbol"} size={24} color={color} />
+              <Icon
+                name={focused ? "home-active" : "home-inactive"}
+                size={24}
+                color={color}
+              />
             ),
           }}
         />

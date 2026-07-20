@@ -42,7 +42,7 @@ const m3 = {
 
     // Status
     error: "#BA1A1A",
-    success: "#1F6C50",
+    success: "#05cc93",
     warning: "#8F4F20",
 
     // Accent Palettes (Static)

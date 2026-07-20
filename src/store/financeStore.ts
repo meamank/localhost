@@ -24,6 +24,24 @@ export interface StatementMetadata {
   billing_period: string;
   due_date: string;
   total_due: number;
+  is_paid?: boolean;
+  created_at?: string;
+}
+
+export interface RecurringObligation {
+  id?: number;
+  type: "emi" | "subscription" | "bill";
+  merchant: string;
+  amount: number;
+  frequency: "monthly" | "yearly";
+  start_date: string;
+  end_date?: string;
+  next_due_date: string;
+  card_last4: string;
+  status: "active" | "completed" | "cancelled";
+  total_installments?: number;
+  pending_installments?: number;
+  outstanding_principal?: number;
   created_at?: string;
 }
 
@@ -107,12 +125,49 @@ async function initDb(): Promise<SQLite.SQLiteDatabase> {
       billing_period TEXT,
       due_date TEXT,
       total_due REAL,
+      is_paid BOOLEAN NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
 
   if (user_version < 3) {
     await database.execAsync(`PRAGMA user_version = 3;`);
+  }
+  
+  if (user_version < 5) {
+    console.log("[financeStore] Migrating to v5 (adding is_paid to statements)...");
+    try {
+      await database.execAsync(
+        `ALTER TABLE statements ADD COLUMN is_paid BOOLEAN NOT NULL DEFAULT 0;`,
+      );
+    } catch (e) {
+      console.log("[financeStore] migration 'is_paid' skipped:", e);
+    }
+    await database.execAsync(`PRAGMA user_version = 5;`);
+  }
+
+  console.log("[financeStore] Ensuring recurring_obligations table...");
+  await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS recurring_obligations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL,
+      merchant TEXT NOT NULL,
+      amount REAL NOT NULL,
+      frequency TEXT NOT NULL DEFAULT 'monthly',
+      start_date TEXT NOT NULL,
+      end_date TEXT,
+      next_due_date TEXT NOT NULL,
+      card_last4 TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'active',
+      total_installments INTEGER,
+      pending_installments INTEGER,
+      outstanding_principal REAL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+
+  if (user_version < 4) {
+    await database.execAsync(`PRAGMA user_version = 4;`);
   }
 
   console.log("[financeStore] Database ready.");
@@ -159,7 +214,7 @@ export const financeStore = {
       [
         expense.amount,
         expense.currency || "INR",
-        expense.category || "other",
+        (expense.category || "other").trim().toLowerCase(),
         expense.merchant || "",
         expense.note || "",
         date,
@@ -174,7 +229,7 @@ export const financeStore = {
       id: result.lastInsertRowId,
       amount: expense.amount,
       currency: expense.currency || "INR",
-      category: expense.category || "other",
+      category: (expense.category || "other").trim().toLowerCase(),
       merchant: expense.merchant || "",
       note: expense.note || "",
       date,
@@ -210,7 +265,7 @@ export const financeStore = {
         [
           exp.amount,
           exp.currency || "INR",
-          exp.category || "other",
+          (exp.category || "other").trim().toLowerCase(),
           exp.merchant || "",
           exp.note || "",
           date,
@@ -225,7 +280,7 @@ export const financeStore = {
         id: result.lastInsertRowId,
         amount: exp.amount,
         currency: exp.currency || "INR",
-        category: exp.category || "other",
+        category: (exp.category || "other").trim().toLowerCase(),
         merchant: exp.merchant || "",
         note: exp.note || "",
         date,
@@ -298,7 +353,7 @@ export const financeStore = {
           const tDate = tx.date || "";
           const tMerchant = tx.merchant || "";
           const tType = tx.type || "debit";
-          const tCat = tx.category || "other";
+          const tCat = (tx.category || "other").trim().toLowerCase();
           const tCard = tx.cardLast4 || "";
           const tBank = tx.bank || "";
           const tDesc = tx.rawDescription || "";
@@ -341,9 +396,23 @@ export const financeStore = {
 
   async getStatements(): Promise<StatementMetadata[]> {
     const database = await getDb();
-    return database.getAllAsync<StatementMetadata>(
-      `SELECT * FROM statements ORDER BY due_date ASC`,
+    const rows = await database.getAllAsync<StatementMetadata>(
+      "SELECT * FROM statements ORDER BY created_at DESC",
     );
+    // SQLite returns integers 0/1 for booleans
+    return rows.map((r) => ({
+      ...r,
+      is_paid: Boolean(r.is_paid),
+    }));
+  },
+
+  async updateStatementPaidStatus(id: number, isPaid: boolean): Promise<boolean> {
+    const database = await getDb();
+    const result = await database.runAsync(
+      "UPDATE statements SET is_paid = ? WHERE id = ?",
+      [isPaid ? 1 : 0, id],
+    );
+    return result.changes > 0;
   },
 
   async queryExpenses(filters?: {
@@ -447,13 +516,55 @@ export const financeStore = {
     return result.changes > 0;
   },
 
+  async addRecurringObligation(
+    ob: RecurringObligation,
+  ): Promise<RecurringObligation> {
+    const database = await getDb();
+    const result = await database.runAsync(
+      `INSERT INTO recurring_obligations 
+        (type, merchant, amount, frequency, start_date, end_date, next_due_date, card_last4, status, total_installments, pending_installments, outstanding_principal)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        ob.type,
+        ob.merchant,
+        ob.amount,
+        ob.frequency,
+        ob.start_date,
+        ob.end_date || null,
+        ob.next_due_date,
+        ob.card_last4,
+        ob.status,
+        ob.total_installments || null,
+        ob.pending_installments || null,
+        ob.outstanding_principal || null,
+      ],
+    );
+    return { ...ob, id: result.lastInsertRowId };
+  },
+
+  async getRecurringObligations(
+    status?: "active" | "completed" | "cancelled",
+  ): Promise<RecurringObligation[]> {
+    const database = await getDb();
+    if (status) {
+      return database.getAllAsync<RecurringObligation>(
+        `SELECT * FROM recurring_obligations WHERE status = ? ORDER BY next_due_date ASC`,
+        [status],
+      );
+    }
+    return database.getAllAsync<RecurringObligation>(
+      `SELECT * FROM recurring_obligations ORDER BY next_due_date ASC`,
+    );
+  },
+
   async clearAllData(): Promise<void> {
     const database = await getDb();
     await database.execAsync("DELETE FROM expenses;");
     await database.execAsync("DELETE FROM statements;");
+    await database.execAsync("DELETE FROM recurring_obligations;");
     try {
       await database.execAsync(
-        "DELETE FROM sqlite_sequence WHERE name='expenses' OR name='statements';",
+        "DELETE FROM sqlite_sequence WHERE name IN ('expenses', 'statements', 'recurring_obligations');",
       );
     } catch (e) {
       // Ignore if sqlite_sequence doesn't exist yet

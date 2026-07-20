@@ -1,3 +1,5 @@
+import { RecurringObligation } from "../store/financeStore";
+
 export interface ParsedTransaction {
   date: string; // YYYY-MM-DD (ISO)
   merchant: string; // cleaned description
@@ -13,6 +15,7 @@ export interface StatementParseResult {
   cardLast4: string;
   bank: string;
   transactions: ParsedTransaction[];
+  emis: Omit<RecurringObligation, "id" | "created_at">[];
   unparsedLines: string[];
   dueDate?: string;
   billingPeriod?: string;
@@ -119,10 +122,40 @@ function autoCategorize(description: string): string {
   return "other";
 }
 
+export function parseDateStr(dateStr: string): string {
+  // Matches DD/MM/YYYY or DD-MM-YYYY
+  if (/^\d{2}[\/\-]\d{2}[\/\-]\d{4}$/.test(dateStr)) {
+    const sep = dateStr.includes("-") ? "-" : "/";
+    const [d, m, y] = dateStr.split(sep);
+    return `${y}-${m}-${d}`;
+  }
+  const months: Record<string, string> = {
+    jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+    jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
+  };
+  // Matches DD MMM, YYYY
+  const match1 = dateStr.match(/(\d{1,2})\s+([A-Za-z]{3,9}),?\s+(\d{4})/);
+  if (match1) {
+    const [_, d, mStr, y] = match1;
+    const m = months[mStr.substring(0, 3).toLowerCase()] || "01";
+    const dPad = d.padStart(2, "0");
+    return `${y}-${m}-${dPad}`;
+  }
+  // Matches MMM DD, YYYY
+  const match2 = dateStr.match(/([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})/);
+  if (match2) {
+    const [_, mStr, d, y] = match2;
+    const m = months[mStr.substring(0, 3).toLowerCase()] || "01";
+    const dPad = d.padStart(2, "0");
+    return `${y}-${m}-${dPad}`;
+  }
+  return dateStr;
+}
+
 export function parseStatement(rawPdfText: string): StatementParseResult {
-  // Extract Last 4 Digits of CC (Matches: XXXXXX6150 or XXXXXXXX4522)
-  const ccMatch = rawPdfText.match(/X{4,}(\d{4})/);
-  const cardLast4 = ccMatch ? ccMatch[1] : "Unknown";
+  // Global fallback for cardLast4
+  const ccMatch = rawPdfText.match(/X{4,}(\d{4})/i);
+  const globalCardLast4 = ccMatch ? ccMatch[1] : "Unknown";
 
   // Bank detection
   let bank = "UNKNOWN";
@@ -132,108 +165,104 @@ export function parseStatement(rawPdfText: string): StatementParseResult {
   else if (/yes\s*bank/i.test(rawPdfText)) bank = "YES BANK";
 
   const transactions: ParsedTransaction[] = [];
+  const emis: Omit<RecurringObligation, "id" | "created_at">[] = [];
+  const lines = rawPdfText.split('\n');
+  let currentCardLast4 = globalCardLast4;
 
-  // Catch both debits and credits from HDFC and YES BANK formats
   const txRegex =
-    /(\d{2}[\/\-]\d{2}[\/\-]\d{4})[|\s]+(?:\d{2}:\d{2}\s+)?(.*?)\s+(?:(?:Cr|Dr|C|D|\+|-)\s*)?([\d,]+\.\d{2})(?:\s*(Cr|Dr|C|D))?/gi;
+    /^\s*(\d{2}[\/\-]\d{2}[\/\-]\d{4})[|\s]+(?:\d{2}:\d{2}\s+)?(.*?)\s+(?:(?:Cr|Dr|C|D|\+|-)\s*)?([\d,]+\.\d{2})(?:\s*(Cr|Dr|C|D))?/i;
 
-  let match;
-  while ((match = txRegex.exec(rawPdfText)) !== null) {
-    const rawDate = match[1]; // "23/04/2026"
-    const rawDesc = match[2].trim(); // "ZOMATO"
-    const rawAmount = match[3]; // "245.00"
-    const suffix = match[4]; // "Cr" etc.
-
-    // Parse Date DD/MM/YYYY or DD-MM-YYYY to YYYY-MM-DD
-    const separator = rawDate.includes("-") ? "-" : "/";
-    const [dd, mm, yyyy] = rawDate.split(separator);
-    const date = `${yyyy}-${mm}-${dd}`;
-
-    // Clean Amount
-    const amountStr = rawAmount.replace(/,/g, "");
-    const amount = parseFloat(amountStr);
-
-    if (isNaN(amount)) continue;
-
-    // Ignore summary lines that aren't actual transactions
-    const descLower = rawDesc.toLowerCase();
-    if (
-      descLower.includes("credit limit") ||
-      descLower.includes("available credit") ||
-      descLower.includes("opening balance") ||
-      descLower.includes("closing balance") ||
-      descLower.includes("total amount due") ||
-      descLower.includes("total due") ||
-      descLower.includes("statement balance") ||
-      descLower.includes("previous balance") ||
-      descLower.includes("cash limit") ||
-      descLower.includes("available cash") ||
-      /^to\s*\d{2}[\/\-]\d{2}[\/\-]\d{4}/.test(descLower) ||
-      /^from\s*\d{2}[\/\-]\d{2}[\/\-]\d{4}/.test(descLower) ||
-      /^\d{2}[\/\-]\d{2}[\/\-]\d{4}$/.test(descLower)
-    ) {
+  for (const line of lines) {
+    // EMI Detection (ICICI format)
+    const emiMatch = line.match(
+      /^\s*(.*?)\s+(\d{2}[\/\-]\d{2}[\/\-]\d{4})\s+(\d{2}[\/\-]\d{2}[\/\-]\d{4})\s+(\d+)\s+([\d,]+\.\d{2})\s+(\d+)\s+([\d,]+\.\d{2})\s+([\d,]+\.\d{2})/i,
+    );
+    if (emiMatch) {
+      emis.push({
+        type: "emi",
+        merchant: emiMatch[1].trim(),
+        start_date: parseDateStr(emiMatch[2]),
+        end_date: parseDateStr(emiMatch[3]),
+        total_installments: parseInt(emiMatch[4], 10),
+        amount: parseFloat(emiMatch[8].replace(/,/g, "")), // Monthly Installment Amount
+        pending_installments: parseInt(emiMatch[6], 10),
+        outstanding_principal: parseFloat(emiMatch[7].replace(/,/g, "")),
+        frequency: "monthly",
+        next_due_date: "", // Set after we find dueDate
+        card_last4: currentCardLast4,
+        status: "active",
+      });
       continue;
     }
 
-    // Determine type
-    const isCredit =
-      (suffix && suffix.toLowerCase().startsWith("c")) ||
-      /payment|reversal|refund|received/i.test(rawDesc) ||
-      match[0].toLowerCase().includes("cr");
+    const match = txRegex.exec(line);
+    if (match) {
+      const rawDate = match[1]; // "28/06/2026"
+      const rawDesc = match[2].trim(); // "13684547118 Interest ... PVT 0"
+      const rawAmount = match[3]; // "466.36"
+      const suffix = match[4]; // "CR" etc.
 
-    const type = isCredit ? "credit" : "debit";
+      // Parse Date DD/MM/YYYY or DD-MM-YYYY to YYYY-MM-DD
+      const separator = rawDate.includes("-") ? "-" : "/";
+      const [dd, mm, yyyy] = rawDate.split(separator);
+      const date = `${yyyy}-${mm}-${dd}`;
 
-    // Clean Merchant string
-    const merchant = rawDesc
-      .replace(/UPI-.*?\|/g, "") // remove UPI prefixes
-      .replace(/[^a-zA-Z0-9\s*]/g, "") // remove special chars
-      .trim();
+      // Clean Amount
+      const amountStr = rawAmount.replace(/,/g, "");
+      const amount = parseFloat(amountStr);
 
-    transactions.push({
-      date,
-      merchant: rawDesc,
-      amount,
-      type,
-      category: autoCategorize(rawDesc),
-      cardLast4,
-      rawDescription: rawDesc,
-      bank,
-    });
+      if (isNaN(amount)) continue;
+
+      const descLower = rawDesc.toLowerCase();
+      if (
+        descLower.includes("credit limit") ||
+        descLower.includes("available credit") ||
+        descLower.includes("opening balance") ||
+        descLower.includes("closing balance") ||
+        descLower.includes("total amount due") ||
+        descLower.includes("total due") ||
+        descLower.includes("statement balance") ||
+        descLower.includes("previous balance") ||
+        descLower.includes("cash limit") ||
+        descLower.includes("available cash") ||
+        descLower.includes("emi conversions") ||
+        /^to\s*\d{2}[\/\-]\d{2}[\/\-]\d{4}/.test(descLower) ||
+        /^from\s*\d{2}[\/\-]\d{2}[\/\-]\d{4}/.test(descLower) ||
+        /^\d{2}[\/\-]\d{2}[\/\-]\d{4}$/.test(descLower)
+      ) {
+        continue;
+      }
+
+      const isCredit =
+        (suffix && suffix.toLowerCase().startsWith("c")) ||
+        /payment|reversal|refund|received/i.test(rawDesc) ||
+        match[0].toLowerCase().includes("cr");
+
+      const type = isCredit ? "credit" : "debit";
+
+      // Clean Merchant string
+      const merchant = rawDesc
+        .replace(/UPI-.*?\|/g, "") // remove UPI prefixes
+        .replace(/^[0-9]{9,}\s*/, "") // remove ICICI 11-digit SerNo prefix
+        .replace(/\s+[0-9]+$/, "") // remove ICICI trailing Reward Points
+        .replace(/[^a-zA-Z0-9\s*]/g, "") // remove special chars
+        .trim();
+
+      transactions.push({
+        date,
+        merchant: merchant,
+        amount,
+        type,
+        category: autoCategorize(merchant),
+        cardLast4: currentCardLast4,
+        rawDescription: rawDesc,
+        bank,
+      });
+    }
   }
 
-  const parseDateStr = (dateStr: string) => {
-    // Matches DD/MM/YYYY or DD-MM-YYYY
-    if (/^\d{2}[\/\-]\d{2}[\/\-]\d{4}$/.test(dateStr)) {
-      const sep = dateStr.includes("-") ? "-" : "/";
-      const [d, m, y] = dateStr.split(sep);
-      return `${y}-${m}-${d}`;
-    }
-    // Matches DD MMM, YYYY
-    const match = dateStr.match(/(\d{2})\s+([A-Za-z]{3}),?\s+(\d{4})/);
-    if (match) {
-      const months: Record<string, string> = {
-        jan: "01",
-        feb: "02",
-        mar: "03",
-        apr: "04",
-        may: "05",
-        jun: "06",
-        jul: "07",
-        aug: "08",
-        sep: "09",
-        oct: "10",
-        nov: "11",
-        dec: "12",
-      };
-      const [_, d, mStr, y] = match;
-      const m = months[mStr.toLowerCase()] || "01";
-      return `${y}-${m}-${d}`;
-    }
-    return dateStr;
-  };
-
   const dateRegex =
-    /(\d{2}[\/\-]\d{2}[\/\-]\d{4}|\d{2}\s+[A-Za-z]{3},?\s+\d{4})/;
+    /(\d{2}[\/\-]\d{2}[\/\-]\d{4}|\d{1,2}\s+[A-Za-z]{3,9},?\s+\d{4}|[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})/;
 
   const dueDateMatch = rawPdfText.match(
     new RegExp(
@@ -284,10 +313,16 @@ export function parseStatement(rawPdfText: string): StatementParseResult {
     return sum + (t.type === "debit" ? t.amount : -t.amount);
   }, 0);
 
+  // Set the next_due_date for EMIs now that we know the statement's dueDate
+  emis.forEach((emi) => {
+    emi.next_due_date = dueDate || emi.start_date;
+  });
+
   return {
-    cardLast4,
+    cardLast4: globalCardLast4,
     bank,
     transactions,
+    emis,
     unparsedLines: [],
     dueDate,
     billingPeriod,

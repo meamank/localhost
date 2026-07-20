@@ -24,10 +24,14 @@ export default function DebugDB() {
   const handleClear = async () => {
     try {
       await financeStore.clearAllData();
-      Toast.show({ type: "success", text1: "Database Cleared" });
+      Toast.show({ type: "custom", text1: "Database Cleared" });
       loadData();
     } catch (e) {
-      Toast.show({ type: "error", text1: "Failed to clear database" });
+      Toast.show({
+        type: "custom",
+        text1: "Failed to clear database",
+        props: { type: "error" },
+      });
     }
   };
 

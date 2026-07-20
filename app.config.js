@@ -7,10 +7,10 @@ export default ({ config }) => {
     orientation: "portrait",
     icon: "./src/assets/images/icon.png",
     scheme: "localhost",
-    userInterfaceStyle: "automatic",
+    userInterfaceStyle: "light",
     ios: {
       supportsTablet: true,
-      bundleIdentifier: "com.sherlock18.nirvah",
+      bundleIdentifier: "com.sherlock18.nirvah.dev",
     },
     android: {
       adaptiveIcon: {
@@ -20,7 +20,7 @@ export default ({ config }) => {
         monochromeImage: "./src/assets/images/android-icon-monochrome.png",
       },
       predictiveBackGestureEnabled: false,
-      package: "com.sherlock18.nirvah",
+      package: "com.sherlock18.nirvah.dev",
     },
     web: {
       bundler: "metro",

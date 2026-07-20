@@ -19,7 +19,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import CategoryCard from "@/src/components/finance/CategoryCard";
 import Empty from "@/src/components/home/Empty";
 import Spacer from "@/src/components/home/Spacer";
-import { Icon } from "@/src/components/Icon";
 import { useColorScheme } from "@/src/components/useColorScheme";
 import { extractDateDetails } from "@/src/constants/helpers";
 import { getUniqueStatements } from "@/src/constants/statementUtils";
@@ -33,7 +32,9 @@ export default function Home() {
   const loadData = useCallback(() => {
     financeStore.queryExpenses().then((data) => setDbData(data));
     financeStore.getStatements().then((allStatements) => {
-      setStatements(getUniqueStatements(allStatements));
+      // Filter out paid statements from the dashboard
+      const unpaidStatements = allStatements.filter((s) => !s.is_paid);
+      setStatements(getUniqueStatements(unpaidStatements));
     });
   }, []);
 
@@ -56,18 +57,27 @@ export default function Home() {
     0,
   );
 
+  const activeDbData = useMemo(() => {
+    return dbData.filter((item) => {
+      // Include manual expenses
+      if (!item.bank || !item.card_last4) return true;
+      // Only include card expenses if their statement is currently unpaid and active on the dashboard
+      return statements.some(
+        (s) => s.bank === item.bank && s.card_last4 === item.card_last4,
+      );
+    });
+  }, [dbData, statements]);
+
   const categoryData = useMemo(
     () =>
-      dbData.reduce(
+      activeDbData.reduce(
         (acc, item) => {
-          // 1. Check if the item belongs to one of the latest statements
           const parentStatement = statements.find(
             (s) => s.bank === item.bank && s.card_last4 === item.card_last4,
           );
 
           let isCurrentCycle = false;
 
-          // If it belongs to a card, verify it falls within the billing period
           if (
             parentStatement &&
             parentStatement.billing_period?.includes("to")
@@ -83,18 +93,15 @@ export default function Home() {
                 isCurrentCycle = true;
               }
             } catch (e) {
-              // If date parsing fails, just include it to be safe
               isCurrentCycle = true;
             }
           } else {
-            // If it's a manual expense (no bank/card), or no billing period exists, include it for the current month
             isCurrentCycle = true;
           }
 
           if (item.type === "debit" && isCurrentCycle) {
-            const cat = item.category?.toLowerCase() || "other";
+            const cat = item.category?.trim().toLowerCase() || "other";
 
-            // Optional: Exclude CC payments if they still sneak in as debits
             const isCcPayment =
               cat === "cc payment" ||
               cat === "credit card payment" ||
@@ -109,11 +116,14 @@ export default function Home() {
         },
         {} as Record<string, number>,
       ),
-    [dbData, statements],
+    [activeDbData, statements],
   );
 
   const headerList = useMemo(() => statements, [statements]);
-  const transactionList = useMemo(() => dbData.slice(0, 20), [dbData]);
+  const transactionList = useMemo(
+    () => activeDbData.slice(0, 20),
+    [activeDbData],
+  );
 
   const renderHeader = useCallback(
     () => (
@@ -126,6 +136,7 @@ export default function Home() {
           <Text className="text-primary text-display-md font-bold tracking-widest">
             ₹
             {totalSpending.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}
           </Text>
@@ -154,7 +165,6 @@ export default function Home() {
                   paddingRight: 16,
                   paddingBottom: 12,
                 }}
-
               />
             </View>
           </>
@@ -182,6 +192,7 @@ export default function Home() {
                 //   label={category}
                 //   index={index}
                 // />
+
                 <View key={category} style={{ width: "48%" }}>
                   <CategoryCard
                     category={category}

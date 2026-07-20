@@ -1,6 +1,6 @@
 import Toast from "react-native-toast-message";
 import { create } from "zustand";
-import { LocalModel, ModelConfig, ModelStatus } from "../types";
+import { LocalModel } from "../types";
 import { modelStore } from "./modelStorage";
 
 interface ModelState {
@@ -8,7 +8,7 @@ interface ModelState {
   localModels: LocalModel[];
   activeModelId: string | null;
   isInitializing: boolean;
-  
+
   //Actions
   setIsInitializing: (isInit: boolean) => void;
   setActiveModelId: (id: string | null) => void;
@@ -56,14 +56,15 @@ export const useModelStore = create<ModelState>((set, get) => ({
       set({ localModels: savedModels, activeModelId: finalActiveModelId });
     } catch (error) {
       Toast.show({
-        type: "error",
+        type: "custom",
         text1: "Failed to load Models from storage",
+        props: { type: "error" },
       });
     } finally {
       set({ isInitializing: false });
     }
   },
-  
+
   addLocalModel: async (model) => {
     const currentModels = get().localModels;
     const exists = currentModels.some((m) => m.id === model.id);
@@ -74,7 +75,7 @@ export const useModelStore = create<ModelState>((set, get) => ({
     await modelStore.saveDownloadedModels(updated);
     set({ localModels: updated });
   },
-  
+
   removeLocalModel: async (id) => {
     const updated = get().localModels.filter((model) => model.id !== id);
     await modelStore.saveDownloadedModels(updated);
